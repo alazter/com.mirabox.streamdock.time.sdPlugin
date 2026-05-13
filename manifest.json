@@ -1,0 +1,53 @@
+{
+  "Actions": [
+    {
+      "UUID": "com.mirabox.streamdock.custom",
+      "Icon": "static/img/App-logo.png",
+      "state": 0,
+      "States": [
+        {
+          "TitleAlignment": "bottom",
+          "FontSize": "16",
+          "Image": "static/img/App-logo.png"
+        },
+        {
+          "TitleAlignment": "center",
+          "FontSize": "11",
+          "Image": "static/img/icon.png"
+        }
+      ],
+      "Settings": {},
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "SupportsKnob": true,
+      "Controllers": [
+        "Knob"
+      ],
+      "Name": "Audio Controller",
+      "Tooltip": "Audio controller",
+      "PropertyInspectorPath": "./propertyInspector/custom/index.html"
+    }
+  ],
+  "Version": "0.0.1",
+  "Name": "App Volume Controller",
+  "Icon": "static/img/App-logo.png",
+  "CategoryIcon": "static/img/App-logo.png",
+  "Category": "Audio",
+  "Description": "Control multiple applications volume with one knob.",
+  "CodePath": "run.bat",
+  "CodePathWin": "run.bat",
+  "SDKVersion": 1,
+  "Author": "edwardmoya97",
+  "URL": "https://mirabox.key123.vip/",
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "7"
+    }
+  ],
+  "ApplicationsToMonitor": {
+    "windows": [
+      "Spotify.exe"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+    "Name": "App Volume Controller",
+    "Category": "Audio",
+    "Description": "Control multiple applications volume with one knob.",
+    "com.mirabox.streamdock.time": {
+        "Name": "App Volume Controller",
+        "Tooltip": "App Volume Controller"
+    },
+    "Localization": {}
+}
