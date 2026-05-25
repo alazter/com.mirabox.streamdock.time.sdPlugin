@@ -436,10 +436,10 @@ function connect() {
             }
         }
 
-        if (event === "dialUp" || event === "touchTap" || event === "keyUp" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown") {
+        if (event === "dialDown" || event === "touchTap" || event === "keyUp" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown") {
             const knob = activeKnobs[context];
             if (knob) {
-                let isKnobPress = (event === "dialUp" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown");
+                let isKnobPress = (event === "dialDown" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown");
                 let action = isKnobPress ? knob.knobAction : knob.screenAction;
                 if (!action) action = "cycle";
 
