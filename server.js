@@ -186,7 +186,7 @@ function updateButton(context, processName, volumeInfo, exePath) {
     let volume = volumeInfo && typeof volumeInfo === 'object' && volumeInfo.volume !== undefined ? volumeInfo.volume : volumeInfo;
     let muted = volumeInfo && typeof volumeInfo === 'object' && volumeInfo.muted !== undefined ? volumeInfo.muted : false;
 
-    let displayVol = volume >= 0 ? volume.toString() + "%" : "--";
+    let displayVol = volume >= 0 ? volume.toString() : "--";
 
     if (image && muted) {
         let muteIcon = profiles.muteIcon || "";
