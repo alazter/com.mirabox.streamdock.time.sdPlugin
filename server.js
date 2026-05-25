@@ -7,9 +7,17 @@ const activeWin = require('active-win');
 // Argumentos do Stream Dock
 const args = process.argv.slice(2);
 const cliParams = {};
-for (let i = 0; i < args.length; i += 2) {
+for (let i = 0; i < args.length; i++) {
     if (args[i].startsWith('-')) {
-        cliParams[args[i].substring(1)] = args[i + 1];
+        const key = args[i].substring(1);
+        const valParts = [];
+        let j = i + 1;
+        while (j < args.length && !args[j].startsWith('-')) {
+            valParts.push(args[j]);
+            j++;
+        }
+        cliParams[key] = valParts.join(' ');
+        i = j - 1;
     }
 }
 
