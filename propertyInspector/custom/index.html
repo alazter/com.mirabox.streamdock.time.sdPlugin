@@ -78,22 +78,27 @@
     <h3>Detected audio processes</h3>
     <button id="refresh-audio">Refresh processes</button>
     <div id="audio-process-list"></div>
+
+    <h3>Blacklisted Apps</h3>
+    <div id="blacklist-container"></div>
   </div>
 
   <script src="../../static/utils/common.js"></script>
   <script src="../../static/action.js"></script>
   <script src="index.js"></script>
-</body>
-<style>
+ </body>
+ <style>
     #initiateBox,
     #initiateBoxx {
         justify-content: center;
         font-weight: bold;
     }
-    #audio-process-list {
+    #audio-process-list,
+    #blacklist-container {
       margin-top: 10px;
     }
-    #audio-process-list .sdpi-item {
+    #audio-process-list .sdpi-item,
+    #blacklist-container .sdpi-item {
       margin-bottom: 6px;
     }
     .sdpi-item {
@@ -114,6 +119,13 @@
       font-size: 16px;
       color: green;
       cursor: pointer;
+    }
+    #audio-process-list .sdpi-item button.btn-blacklist {
+      color: red;
+      margin-right: 5px;
+    }
+    #blacklist-container .sdpi-item button {
+      color: red;
     }
 </style>
 </html>

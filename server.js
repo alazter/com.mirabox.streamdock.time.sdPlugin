@@ -34,6 +34,7 @@ try {
 let ws;
 let activeKnobs = {}; // context -> { assignedApp, clickMode, currentActiveProcess: { name, path }, currentActiveVolume, isSettingVolume, pendingVolume }
 let whitelist = [];
+let blacklist = [];
 let profiles = {};
 let iconCache = {};
 let processPathCache = {};
@@ -61,20 +62,16 @@ function logDebug(msg) {
 const PROFILES_PATH = path.join(__dirname, 'profiles.json');
 const VOL_CTRL_CMD = path.join(__dirname, 'VolumeControl.exe');
 
-// Carregar perfis e whitelist
+// Carregar perfis, whitelist e blacklist
 function loadData() {
     try {
         if (fs.existsSync(PROFILES_PATH)) {
             const data = JSON.parse(fs.readFileSync(PROFILES_PATH, 'utf8'));
-            if (data.profiles || data.whitelist) {
-                profiles = data.profiles || {};
-                whitelist = data.whitelist || [];
-            } else {
-                profiles = data;
-                whitelist = [];
-            }
+            profiles = data.profiles || {};
+            whitelist = data.whitelist || [];
+            blacklist = data.blacklist || [];
         } else {
-            fs.writeFileSync(PROFILES_PATH, JSON.stringify({profiles: {}, whitelist: []}));
+            fs.writeFileSync(PROFILES_PATH, JSON.stringify({profiles: {}, whitelist: [], blacklist: []}, null, 2));
         }
     } catch(e) {
         console.error("Erro lendo profiles:", e);
@@ -83,7 +80,7 @@ function loadData() {
 
 function saveData() {
     try {
-        fs.writeFileSync(PROFILES_PATH, JSON.stringify({profiles, whitelist}, null, 2));
+        fs.writeFileSync(PROFILES_PATH, JSON.stringify({profiles, whitelist, blacklist}, null, 2));
     } catch(e) {
         console.error("Erro salvando profiles:", e);
     }
@@ -291,9 +288,12 @@ function connect() {
             };
             if (settings.whitelist && Array.isArray(settings.whitelist)) {
                 whitelist = settings.whitelist;
-                saveData();
-                logDebug("Loaded whitelist from willAppear: " + JSON.stringify(whitelist));
             }
+            if (settings.blacklist && Array.isArray(settings.blacklist)) {
+                blacklist = settings.blacklist;
+            }
+            saveData();
+            logDebug("Loaded willAppear settings. Whitelist: " + JSON.stringify(whitelist) + ", Blacklist: " + JSON.stringify(blacklist));
         }
 
         if (event === "willDisappear") {
@@ -309,6 +309,13 @@ function connect() {
                 activeKnobs[context].screenAction = settings.screenAction || "cycle";
                 activeKnobs[context].currentActiveProcess = null; // força reavaliação
             }
+            if (settings.whitelist && Array.isArray(settings.whitelist)) {
+                whitelist = settings.whitelist;
+            }
+            if (settings.blacklist && Array.isArray(settings.blacklist)) {
+                blacklist = settings.blacklist;
+            }
+            saveData();
         }
 
         // Eventos via Property Inspector
@@ -317,17 +324,18 @@ function connect() {
             if (uiMsg.action === "addToWhitelist") {
                 const proc = uiMsg.process.toLowerCase();
                 if (!whitelist.includes(proc)) whitelist.push(proc);
-                console.log("Adicionado", proc);
+                blacklist = blacklist.filter(p => p !== proc); // Exclusividade mútua
+                console.log("Adicionado à Whitelist:", proc);
                 saveData();
                 sendToSD({
                     event: "sendToPropertyInspector",
                     context: context,
-                    payload: { whitelist: whitelist }
+                    payload: { whitelist: whitelist, blacklist: blacklist }
                 });
                 sendToSD({
                     event: "setSettings",
                     context: context,
-                    payload: { whitelist: whitelist }
+                    payload: { whitelist: whitelist, blacklist: blacklist }
                 });
             } else if (uiMsg.action === "removeFromWhitelist") {
                 const proc = uiMsg.process.toLowerCase();
@@ -336,12 +344,54 @@ function connect() {
                 sendToSD({
                     event: "sendToPropertyInspector",
                     context: context,
-                    payload: { whitelist: whitelist }
+                    payload: { whitelist: whitelist, blacklist: blacklist }
                 });
                 sendToSD({
                     event: "setSettings",
                     context: context,
-                    payload: { whitelist: whitelist }
+                    payload: { whitelist: whitelist, blacklist: blacklist }
+                });
+            } else if (uiMsg.action === "addToBlacklist") {
+                const proc = uiMsg.process.toLowerCase();
+                if (!blacklist.includes(proc)) blacklist.push(proc);
+                whitelist = whitelist.filter(p => p !== proc); // Exclusividade mútua
+                console.log("Adicionado à Blacklist:", proc);
+                
+                // Desassociar o aplicativo caso ele estivesse ativamente associado a algum knob
+                for (const ctx of Object.keys(activeKnobs)) {
+                    const k = activeKnobs[ctx];
+                    if (k.assignedApp === proc || k.assignedApp === proc + '.exe' || k.assignedApp.replace('.exe', '') === proc) {
+                        k.assignedApp = "";
+                        k.currentActiveProcess = null;
+                        updateButton(ctx, "", -1, null);
+                    }
+                }
+                
+                saveData();
+                sendToSD({
+                    event: "sendToPropertyInspector",
+                    context: context,
+                    payload: { whitelist: whitelist, blacklist: blacklist }
+                });
+                sendToSD({
+                    event: "setSettings",
+                    context: context,
+                    payload: { whitelist: whitelist, blacklist: blacklist }
+                });
+            } else if (uiMsg.action === "removeFromBlacklist") {
+                const proc = uiMsg.process.toLowerCase();
+                blacklist = blacklist.filter(p => p !== proc);
+                console.log("Removido da Blacklist:", proc);
+                saveData();
+                sendToSD({
+                    event: "sendToPropertyInspector",
+                    context: context,
+                    payload: { whitelist: whitelist, blacklist: blacklist }
+                });
+                sendToSD({
+                    event: "setSettings",
+                    context: context,
+                    payload: { whitelist: whitelist, blacklist: blacklist }
                 });
             } else if (uiMsg.action === "setAppIcon") {
                 const proc = uiMsg.process.toLowerCase();
@@ -378,11 +428,14 @@ function connect() {
                     const processesRaw = execSync(`"${VOL_CTRL_CMD}" list`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
                     let processList = [];
                     if (processesRaw.length > 0) processList = processesRaw.split(',').map(p => p.toLowerCase());
+ 
+                    // Filtrar fora processos na blacklist para que não apareçam nos processos detectados
+                    const filteredProcessList = processList.filter(p => !blacklist.includes(p));
 
                     sendToSD({
                         event: "sendToPropertyInspector",
                         context: context,
-                        payload: { audioProcesses: processList, whitelist: whitelist }
+                        payload: { audioProcesses: filteredProcessList, whitelist: whitelist, blacklist: blacklist }
                     });
                 } catch(e) {
                     console.error("Erro ao listar processos de audio: ", e);
@@ -391,7 +444,7 @@ function connect() {
                 sendToSD({
                     event: "sendToPropertyInspector",
                     context: context,
-                    payload: { whitelist: whitelist }
+                    payload: { whitelist: whitelist, blacklist: blacklist }
                 });
             } else if (uiMsg.action === "setKnobConfig") {
                 if (activeKnobs[context]) {
@@ -409,7 +462,8 @@ function connect() {
                             clickMode: activeKnobs[context].clickMode,
                             knobAction: activeKnobs[context].knobAction,
                             screenAction: activeKnobs[context].screenAction,
-                            whitelist: whitelist
+                            whitelist: whitelist,
+                            blacklist: blacklist
                         }
                     });
                 }
@@ -462,14 +516,14 @@ function connect() {
                         
                         let cyclePool = [];
                         if (knob.clickMode === "whitelist") {
-                            cyclePool = processList.filter(p => whitelist.includes(p));
-                            if (cyclePool.length === 0) cyclePool = whitelist;
+                            cyclePool = processList.filter(p => whitelist.includes(p) && !blacklist.includes(p));
+                            if (cyclePool.length === 0) cyclePool = whitelist.filter(p => !blacklist.includes(p));
                         } else {
-                            cyclePool = [...processList];
+                            cyclePool = processList.filter(p => !blacklist.includes(p));
                             const win = activeWin.sync();
                             if (win && win.owner) {
                                 const focusedProcessName = (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase();
-                                if (focusedProcessName.endsWith('.exe') && !cyclePool.includes(focusedProcessName)) {
+                                if (focusedProcessName.endsWith('.exe') && !blacklist.includes(focusedProcessName) && !cyclePool.includes(focusedProcessName)) {
                                     cyclePool.push(focusedProcessName);
                                 }
                             }
@@ -483,7 +537,7 @@ function connect() {
                             knob.assignedApp = nextApp;
                             knob.currentActiveProcess = null; // force update
                             
-                            sendToSD({ event: "setSettings", context: context, payload: { assignedApp: nextApp, clickMode: knob.clickMode, knobAction: knob.knobAction, screenAction: knob.screenAction, whitelist: whitelist } });
+                            sendToSD({ event: "setSettings", context: context, payload: { assignedApp: nextApp, clickMode: knob.clickMode, knobAction: knob.knobAction, screenAction: knob.screenAction, whitelist: whitelist, blacklist: blacklist } });
                             sendToSD({ event: "sendToPropertyInspector", context: context, payload: { assignedApp: nextApp } });
                         }
                     } catch(e) {}
@@ -506,11 +560,15 @@ setInterval(async () => {
             let targetProcessName = knob.assignedApp;
             let targetPath = null;
             
+            if (targetProcessName && blacklist.includes(targetProcessName)) {
+                targetProcessName = "";
+            }
+            
             if (!targetProcessName) {
-                if (focusedProcessName && whitelist.includes(focusedProcessName)) {
+                if (focusedProcessName && whitelist.includes(focusedProcessName) && !blacklist.includes(focusedProcessName)) {
                     targetProcessName = focusedProcessName;
                     targetPath = focusedPath;
-                } else if (knob.currentActiveProcess && whitelist.includes(knob.currentActiveProcess.name)) {
+                } else if (knob.currentActiveProcess && whitelist.includes(knob.currentActiveProcess.name) && !blacklist.includes(knob.currentActiveProcess.name)) {
                     targetProcessName = knob.currentActiveProcess.name;
                     targetPath = knob.currentActiveProcess.path;
                 }

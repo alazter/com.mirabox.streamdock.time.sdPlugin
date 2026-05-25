@@ -13,6 +13,7 @@ const $dom = {
         if (stepInput) stepInput.value = $settings.volumeStep;
     }
     renderWhitelist();
+    renderBlacklist();
     renderKnobConfig();
     if ($websocket && $websocket.sendToPlugin) {
         $websocket.sendToPlugin({ action: "requestGlobalState" });
@@ -106,6 +107,51 @@ function renderWhitelist() {
     });
 }
 
+function renderBlacklist() {
+    const container = document.getElementById("blacklist-container");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const list = $settings && Array.isArray($settings.blacklist) ? $settings.blacklist : [];
+    if (list.length === 0) {
+        container.innerHTML = "<div style='color: #666; font-style: italic; margin-left: 10px;'>No blacklisted apps</div>";
+        return;
+    }
+
+    list.forEach(app => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "sdpi-item";
+        wrapper.style.display = "flex";
+        wrapper.style.justifyContent = "space-between";
+        wrapper.style.alignItems = "center";
+        wrapper.style.marginBottom = "6px";
+        
+        const span = document.createElement("span");
+        span.textContent = app;
+        wrapper.appendChild(span);
+        
+        const btn = document.createElement("button");
+        btn.textContent = "❌";
+        btn.title = "Remove from blacklist";
+        btn.style.background = "none";
+        btn.style.border = "none";
+        btn.style.fontSize = "16px";
+        btn.style.cursor = "pointer";
+        btn.onclick = () => {
+            if ($settings && Array.isArray($settings.blacklist)) {
+                $settings.blacklist = $settings.blacklist.filter(p => p !== app);
+            }
+            if ($websocket && $websocket.sendToPlugin) {
+                $websocket.sendToPlugin({ action: "removeFromBlacklist", process: app });
+            }
+            renderBlacklist();
+        };
+        
+        wrapper.appendChild(btn);
+        container.appendChild(wrapper);
+    });
+}
+
 const appInputFile = document.getElementById("app-input-file");
 $dom.addBtn?.addEventListener("click", () => {
     if (appInputFile) appInputFile.click();
@@ -156,6 +202,17 @@ function onPluginMessage(message) {
             $settings.whitelist = message.whitelist;
         }
         renderWhitelist();
+        renderKnobConfig();
+    }
+
+    if (message.blacklist) {
+        if (typeof $settings === 'undefined' || !$settings) {
+            window.$settings = { blacklist: message.blacklist };
+        } else {
+            $settings.blacklist = message.blacklist;
+        }
+        renderBlacklist();
+        renderKnobConfig();
     }
 
     if (message.audioProcesses) {
@@ -314,6 +371,50 @@ function renderAudioProcesses(processes) {
     div.appendChild(nameSpan);
 
     const actionsDiv = document.createElement("div");
+    actionsDiv.style.display = "flex";
+    actionsDiv.style.alignItems = "center";
+
+    // Botão 🛑 para adicionar à Blacklist
+    const btnBlacklist = document.createElement("button");
+    btnBlacklist.textContent = "🛑";
+    btnBlacklist.title = "Add to Blacklist";
+    btnBlacklist.className = "btn-blacklist";
+    btnBlacklist.style.cursor = "pointer";
+    btnBlacklist.onclick = () => {
+        btnBlacklist.textContent = "🚫";
+        if ($websocket && $websocket.sendToPlugin) {
+            $websocket.sendToPlugin({ action: "addToBlacklist", process: proc });
+        }
+        
+        // Atualizar localmente
+        if (typeof $settings === 'undefined' || !$settings) {
+            window.$settings = { blacklist: [], whitelist: [] };
+        }
+        if (!Array.isArray($settings.blacklist)) {
+            $settings.blacklist = [];
+        }
+        if (!$settings.blacklist.includes(proc)) {
+            $settings.blacklist.push(proc);
+        }
+        if (Array.isArray($settings.whitelist)) {
+            $settings.whitelist = $settings.whitelist.filter(p => p !== proc);
+        }
+
+        if ($websocket.saveData) {
+            $websocket.saveData($settings);
+        } else if (typeof setSettings === 'function') {
+            try { setSettings($settings); } catch(err){}
+        }
+
+        renderWhitelist();
+        renderBlacklist();
+        renderKnobConfig();
+
+        // Animação/transição de 300ms antes de ocultar
+        setTimeout(() => {
+            renderAudioProcesses(processes.filter(p => p !== proc));
+        }, 300);
+    };
 
     const iconInput = document.createElement("input");
     iconInput.type = "file";
@@ -354,6 +455,7 @@ function renderAudioProcesses(processes) {
         btnIcon.textContent = "🖼️";
     };
 
+    actionsDiv.appendChild(btnBlacklist);
     actionsDiv.appendChild(iconInput);
     actionsDiv.appendChild(btnIcon);
     actionsDiv.appendChild(btnClearIcon);
@@ -371,7 +473,7 @@ function renderAudioProcesses(processes) {
         });
         // Actualizar localmente también
         if (typeof $settings === 'undefined' || !$settings) {
-            window.$settings = { whitelist: [] };
+            window.$settings = { whitelist: [], blacklist: [] };
         }
         if (!Array.isArray($settings.whitelist)) {
             $settings.whitelist = [];
@@ -379,14 +481,19 @@ function renderAudioProcesses(processes) {
         if (!$settings.whitelist.includes(proc)) {
             $settings.whitelist.push(proc);
         }
+        if (Array.isArray($settings.blacklist)) {
+            $settings.blacklist = $settings.blacklist.filter(p => p !== proc);
+        }
         
         if ($websocket.saveData) {
             $websocket.saveData($settings);
         } else if (typeof setSettings === 'function') {
-            try { setSettings($settings); } catch(e){}
+            try { setSettings($settings); } catch(err){}
         }
 
         renderWhitelist();
+        renderBlacklist();
+        renderKnobConfig();
         renderAudioProcesses(processes);
       };
 
