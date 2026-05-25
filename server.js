@@ -408,7 +408,7 @@ function connect() {
             }
         }
 
-        if (event === "dialRotate") {
+        if (event === "dialRotate" || event === "encoderRotate") {
             const ticks = msg.payload.ticks || 0;
             const knob = activeKnobs[context];
             if (knob && ticks !== 0 && knob.currentActiveProcess) {
@@ -428,10 +428,11 @@ function connect() {
             }
         }
 
-        if (event === "dialUp" || event === "touchTap" || event === "keyUp") {
+        if (event === "dialUp" || event === "touchTap" || event === "keyUp" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown") {
             const knob = activeKnobs[context];
             if (knob) {
-                let action = (event === "dialUp") ? knob.knobAction : knob.screenAction;
+                let isKnobPress = (event === "dialUp" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown");
+                let action = isKnobPress ? knob.knobAction : knob.screenAction;
                 if (!action) action = "cycle";
 
                 if (action === "mute") {
