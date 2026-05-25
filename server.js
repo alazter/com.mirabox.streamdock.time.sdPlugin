@@ -429,6 +429,11 @@ function connect() {
                     let processList = [];
                     if (processesRaw.length > 0) processList = processesRaw.split(',').map(p => p.toLowerCase());
  
+                    // Garantir que streamdock.exe sempre apareça na lista de detectados para poder ser bloqueado
+                    if (!processList.includes("streamdock.exe")) {
+                        processList.push("streamdock.exe");
+                    }
+
                     // Filtrar fora processos na blacklist para que não apareçam nos processos detectados
                     const filteredProcessList = processList.filter(p => !blacklist.includes(p));
 

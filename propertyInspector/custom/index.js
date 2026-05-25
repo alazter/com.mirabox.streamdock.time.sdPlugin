@@ -190,6 +190,48 @@ appInputFile?.addEventListener("change", (e) => {
     e.target.value = "";
 });
 
+const blacklistInputFile = document.getElementById("blacklist-input-file");
+document.getElementById("add-blacklist-app")?.addEventListener("click", () => {
+    if (blacklistInputFile) blacklistInputFile.click();
+});
+
+blacklistInputFile?.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    let appName = decodeURIComponent(file.name).split('\\').pop().split('/').pop().trim().toLowerCase();
+    
+    $websocket.sendToPlugin({
+        action: "addToBlacklist",
+        process: appName
+    });
+
+    if (typeof $settings === 'undefined' || !$settings) {
+        window.$settings = { blacklist: [], whitelist: [] };
+    }
+    if (!Array.isArray($settings.blacklist)) {
+        $settings.blacklist = [];
+    }
+    if (!$settings.blacklist.includes(appName)) {
+        $settings.blacklist.push(appName);
+    }
+    if (Array.isArray($settings.whitelist)) {
+        $settings.whitelist = $settings.whitelist.filter(p => p !== appName);
+    }
+    
+    if ($websocket.saveData) {
+        $websocket.saveData($settings);
+    } else if (typeof setSettings === 'function') {
+        try { setSettings($settings); } catch(err){}
+    }
+
+    renderWhitelist();
+    renderBlacklist();
+    renderKnobConfig();
+    
+    e.target.value = "";
+});
+
 document.getElementById("refresh-audio")?.addEventListener("click", () => {
   $websocket.sendToPlugin({ action: "getAudioProcesses" });
 });
