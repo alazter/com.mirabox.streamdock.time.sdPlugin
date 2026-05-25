@@ -237,19 +237,24 @@ public class VolumeControl
                 sessionCtrl.GetProcessId(out pid);
 
                 bool match = false;
-                if (pid == 0) {
-                    IntPtr instIdPtr;
-                    sessionCtrl.GetSessionInstanceIdentifier(out instIdPtr);
-                    if (instIdPtr != IntPtr.Zero)
+                IntPtr instIdPtr;
+                sessionCtrl.GetSessionInstanceIdentifier(out instIdPtr);
+                if (instIdPtr != IntPtr.Zero)
+                {
+                    string instId = Marshal.PtrToStringUni(instIdPtr).ToLower();
+                    Marshal.FreeCoTaskMem(instIdPtr);
+                    if (!string.IsNullOrEmpty(targetProcessName))
                     {
-                        string instId = Marshal.PtrToStringUni(instIdPtr).ToLower();
-                        Marshal.FreeCoTaskMem(instIdPtr);
-                        if (!string.IsNullOrEmpty(targetProcessName) && instId.Contains(targetProcessName))
+                        string nameWithoutExe = targetProcessName.Replace(".exe", "");
+                        if (instId.Contains(targetProcessName) || instId.Contains(nameWithoutExe))
                         {
                             match = true;
                         }
                     }
-                } else {
+                }
+
+                if (!match && pid != 0)
+                {
                     if (isPid && pid == targetPid)
                     {
                         match = true;

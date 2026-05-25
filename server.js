@@ -86,6 +86,15 @@ function saveData() {
     }
 }
 
+let saveTimeout = null;
+function saveDataDebounced() {
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+        saveData();
+        saveTimeout = null;
+    }, 1000);
+}
+
 function getVolume(pid) {
     try {
         const out = execSync(`"${VOL_CTRL_CMD}" "${pid}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
@@ -113,7 +122,7 @@ function applyVolume(context) {
             if (!isNaN(finalVol) && finalVol >= 0) {
                 if (!profiles[knob.currentActiveProcess.name]) profiles[knob.currentActiveProcess.name] = {};
                 profiles[knob.currentActiveProcess.name].lastVolume = finalVol;
-                saveData();
+                saveDataDebounced(); // Usar a gravação debouçada para performance extrema no giro
                 if (activeKnobs[context]) {
                     activeKnobs[context].currentMuted = (parts.length > 1 && parseInt(parts[1], 10) === 1);
                 }
