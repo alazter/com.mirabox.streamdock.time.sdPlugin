@@ -60,9 +60,94 @@ public class VolumeControl
         [PreserveSig] int GetMute(out int pbMute);
     }
 
+    private static string GetProcessPathByName(string processName)
+    {
+        if (processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            processName = processName.Substring(0, processName.Length - 4);
+        }
+        try
+        {
+            var processes = System.Diagnostics.Process.GetProcessesByName(processName);
+            if (processes != null && processes.Length > 0)
+            {
+                foreach (var proc in processes)
+                {
+                    try
+                    {
+                        string path = proc.MainModule.FileName;
+                        if (!string.IsNullOrEmpty(path)) return path;
+                    }
+                    catch {}
+                }
+            }
+        }
+        catch {}
+        return null;
+    }
+
     public static void Main(string[] args)
     {
         if (args.Length == 0) { Console.WriteLine("USAGE: VolumeControl.exe <pid_or_name|list> [new_volume_0_to_100|toggle_mute]"); return; }
+
+        string cmd = args[0].ToLower();
+        if (cmd == "path")
+        {
+            if (args.Length < 2) { Console.WriteLine(""); return; }
+            string targetName = args[1];
+            string path = GetProcessPathByName(targetName);
+            Console.WriteLine(path ?? "");
+            return;
+        }
+
+        if (cmd == "icon")
+        {
+            if (args.Length < 2) { Console.WriteLine(""); return; }
+            string target = args[1];
+            string exePath = target;
+            if (!System.IO.File.Exists(target))
+            {
+                string resolved = GetProcessPathByName(target);
+                if (!string.IsNullOrEmpty(resolved) && System.IO.File.Exists(resolved))
+                {
+                    exePath = resolved;
+                }
+                else
+                {
+                    // Fallbacks comuns
+                    if (target.Equals("steam.exe", StringComparison.OrdinalIgnoreCase) || target.Equals("steam", StringComparison.OrdinalIgnoreCase))
+                    {
+                        exePath = @"C:\Program Files (x86)\Steam\steam.exe";
+                    }
+                }
+            }
+
+            if (System.IO.File.Exists(exePath))
+            {
+                try
+                {
+                    using (System.Drawing.Icon icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath))
+                    {
+                        if (icon != null)
+                        {
+                            using (System.Drawing.Bitmap bmp = icon.ToBitmap())
+                            {
+                                using (System.IO.MemoryStream ms = new System.IO.MemoryStream())
+                                {
+                                    bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                                    byte[] bytes = ms.ToArray();
+                                    Console.WriteLine("data:image/png;base64," + Convert.ToBase64String(bytes));
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch {}
+            }
+            Console.WriteLine("");
+            return;
+        }
 
         string targetInput = args[0].ToLower().Replace(".exe", "");
         bool listMode = (targetInput == "list");

@@ -35,27 +35,10 @@ function getPathFromProcessName(processName) {
         return processPathCache[processName] === 'NOT_FOUND' ? null : processPathCache[processName];
     }
     try {
-        let psScript = `(Get-CimInstance Win32_Process -Filter "Name='${processName}'" | Select-Object -First 1).ExecutablePath`;
-        let pathStr = execSync(`powershell -NoProfile -Command "${psScript}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-        if (pathStr) {
+        let pathStr = execSync(`"${VOL_CTRL_CMD}" path "${processName}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+        if (pathStr && fs.existsSync(pathStr)) {
             processPathCache[processName] = pathStr;
             return pathStr;
-        }
-
-        const nameWithoutExt = processName.replace('.exe', '');
-        psScript = `(Get-Process -Name '${nameWithoutExt}' -ErrorAction SilentlyContinue | Select-Object -First 1).Path`;
-        pathStr = execSync(`powershell -NoProfile -Command "${psScript}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-        if (pathStr) {
-            processPathCache[processName] = pathStr;
-            return pathStr;
-        }
-        
-        if (processName === 'steam.exe' || processName === 'steamwebhelper.exe') {
-             pathStr = "C:\\Program Files (x86)\\Steam\\steam.exe";
-             if (fs.existsSync(pathStr)) {
-                 processPathCache[processName] = pathStr;
-                 return pathStr;
-             }
         }
     } catch(e) {}
     
@@ -140,23 +123,14 @@ function applyVolume(context) {
 // Extrair icone usando powershell com cache
 function getIconBase64(exePath) {
     if (iconCache[exePath]) return iconCache[exePath];
-
-    const psScript = `
-        Add-Type -AssemblyName System.Drawing
-        $icon = [System.Drawing.Icon]::ExtractAssociatedIcon("${exePath}")
-        $ms = New-Object System.IO.MemoryStream
-        $icon.ToBitmap().Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
-        $bytes = $ms.ToArray()
-        [Convert]::ToBase64String($bytes)
-    `;
     try {
-        const base64 = execSync(`powershell -NoProfile -Command "${psScript}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-        const fullBase64 = "data:image/png;base64," + base64;
-        iconCache[exePath] = fullBase64;
-        return fullBase64;
-    } catch (e) {
-        return null;
-    }
+        const base64Data = execSync(`"${VOL_CTRL_CMD}" icon "${exePath}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+        if (base64Data && base64Data.startsWith("data:image/png;base64,")) {
+            iconCache[exePath] = base64Data;
+            return base64Data;
+        }
+    } catch (e) {}
+    return null;
 }
 
 function sendToSD(payload) {
@@ -544,6 +518,17 @@ setInterval(async () => {
                     knob.currentActiveVolume = volInfo.volume;
                     knob.currentMuted = volInfo.muted;
                     updateButton(context, targetProcessName, volInfo, targetPath);
+                } else {
+                    // Sincronização inteligente de volume/mudo em tempo real se o aplicativo ativo continuar o mesmo
+                    // Evita atualizações redundantes e só executa se o botão não estiver ativamente em uso
+                    if (!knob.isSettingVolume && knob.pendingVolume === null) {
+                        let volInfo = getVolume(targetProcessName);
+                        if (volInfo.volume >= 0 && (volInfo.volume !== knob.currentActiveVolume || volInfo.muted !== knob.currentMuted)) {
+                            knob.currentActiveVolume = volInfo.volume;
+                            knob.currentMuted = volInfo.muted;
+                            updateButton(context, targetProcessName, volInfo, targetPath);
+                        }
+                    }
                 }
             } else {
                 if (knob.currentActiveProcess) {
