@@ -3,15 +3,6 @@
 
 This repository contains a modified and enhanced version of the native Time (Clock) plugin for the Mirabox Stream Dock.
 
-## 🚀 Features and Improvements
-
-- **Universal Knob Click Fix**: Solved a hardware/software bug on the **Stream Dock N4 Pro** where knob clicks would fail due to missing `dialUp` release events. The plugin now triggers actions instantly on `dialDown` (press), resulting in 100% reliable click responses and faster response times across all devices (N4 Standard & N4 Pro).
-- **Customized Audio Blacklist (New!)**: Added a customized blacklist feature to ignore unwanted background audio processes (like system sounds or notification daemons). Features an interactive UI in the Property Inspector with a `🛑` button that turns to `🚫` on click, and a dedicated **Blacklisted Apps** section where apps can be removed at any time with a single `❌` click.
-- **High-Performance Native C# Backend**: Integrated a native C# backend (`VolumeControl.exe` / `VolumeControl.cs`) to replace slow and heavy PowerShell processes for resolving paths and extracting PNG icons directly in Base64. Operation latency has been reduced from ~1.5s to 10-20ms, offering instantaneous feedback.
-- **Smart Real-Time Volume & Mute Sync**: An intelligent background loop synchronizes dial displays instantly if application volumes or mute states are altered externally (e.g., via Windows Volume Mixer, Spotify, or media keys). Includes a safety guard to prevent display flickers during active knob rotation.
-- **Robust Argument Parsing**: Re-engineered CLI argument reconstruction in `server.js` to safely parse complex, spaced, or quote-stripped JSON parameters (like `-info`) sent by the Stream Dock bootstrap runner.
-- **Full N4 Pro Compatibility**: Added event mappings for both standard dials and the newer Mirabox N4 Pro dial/encoder press/rotation events (`dialRotate`, `encoderRotate`, etc.).
-
 ## 📦 How to Install and Use
 
 1. Download or clone this repository.
