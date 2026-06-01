@@ -7,7 +7,7 @@ This repository contains a modified and enhanced version of the native Time (Clo
 1. Download the packaged plugin installer (`com.mirabox.streamdock.time.SDPlugin`) directly from the releases page:
    👉 **[Download Latest Release (v1.1.0)](https://github.com/alazter/com.mirabox.streamdock.time.sdPlugin/releases/download/v1.1.0/com.mirabox.streamdock.time.SDPlugin)**
 2. **Double-click** the downloaded `.SDPlugin` file.
-3. The Mirabox Stream Dock software will automatically open and install the plugin instantly. No manual folder copying required!
+3. The Mirabox Stream Dock software will automatically open and install the plugin instantly.
 
 ## 📄 License
 This project is licensed under the GNU GPLv3 License - see the [LICENSE](LICENSE) file for details.
