@@ -4,10 +4,10 @@ This repository contains a modified and enhanced version of the native Time (Clo
 
 ## 📦 How to Install and Use
 
-1. Download or clone this repository.
-2. Ensure the folder is named `com.mirabox.streamdock.time.sdPlugin`.
-3. Copy the folder to your Stream Dock plugins directory.
-4. Restart the Stream Dock application. The enhanced plugin will appear in the list of available plugins.
+1. Download the packaged plugin installer (`com.mirabox.streamdock.time.SDPlugin`) directly from the releases page:
+   👉 **[Download Latest Release (v1.1.0)](https://github.com/alazter/com.mirabox.streamdock.time.sdPlugin/releases/download/v1.1.0/com.mirabox.streamdock.time.SDPlugin)**
+2. **Double-click** the downloaded `.SDPlugin` file.
+3. The Mirabox Stream Dock software will automatically open and install the plugin instantly. No manual folder copying required!
 
 ## 📄 License
 This project is licensed under the GNU GPLv3 License - see the [LICENSE](LICENSE) file for details.
@@ -23,10 +23,10 @@ Este repositório contém uma versão modificada e aprimorada do plugin nativo d
 
 ## 📦 Como Instalar e Usar
 
-1. Faça o download ou clone este repositório.
-2. Certifique-se de que a pasta se chama `com.mirabox.streamdock.time.sdPlugin`.
-3. Copie a pasta para o diretório de plugins do seu Stream Dock.
-4. Reinicie o aplicativo do Stream Dock. O plugin aprimorado aparecerá na lista de plugins disponíveis.
+1. Baixe o instalador oficial do plugin (`com.mirabox.streamdock.time.SDPlugin`) diretamente na página de lançamentos:
+   👉 **[Baixar Versão Recente (v1.1.0)](https://github.com/alazter/com.mirabox.streamdock.time.sdPlugin/releases/download/v1.1.0/com.mirabox.streamdock.time.SDPlugin)**
+2. Dê um **clique duplo** no arquivo `.SDPlugin` baixado.
+3. O software do Mirabox Stream Dock abrirá automaticamente e instalará o plugin de forma instantânea. Não é necessário copiar nenhuma pasta manualmente!
 
 ## 📄 Licença
 Este projeto está licenciado sob a Licença GNU GPLv3 - consulte o arquivo [LICENSE](LICENSE) para obter detalhes.
