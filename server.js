@@ -56,34 +56,66 @@ function getPathFromProcessName(processName) {
 }
 
 function logDebug(msg) {
-    try { fs.appendFileSync(path.join(__dirname, 'debug.log'), new Date().toISOString() + ' ' + msg + '\n'); } catch(e){}
+    // Logging desativado conforme solicitado pelo usuário
 }
 
-const PROFILES_PATH = path.join(__dirname, 'profiles.json');
+// Localizar a pasta AppData para armazenar perfis de forma segura e persistente
+const appDataDir = process.env.APPDATA || (process.platform === 'darwin' ? path.join(process.env.HOME, 'Library/Preferences') : path.join(process.env.HOME, '.config'));
+const PLUGIN_DATA_DIR = path.join(appDataDir, 'com.mirabox.streamdock.time.sdPlugin');
+const PROFILES_PATH = path.join(PLUGIN_DATA_DIR, 'profiles.json');
+const LOCAL_PROFILES_PATH = path.join(__dirname, 'profiles.json');
 const VOL_CTRL_CMD = path.join(__dirname, 'VolumeControl.exe');
 
-// Carregar perfis, whitelist e blacklist
+// Carregar perfis, whitelist e blacklist de forma persistente com migração automatizada
 function loadData() {
     try {
+        if (!fs.existsSync(PLUGIN_DATA_DIR)) {
+            fs.mkdirSync(PLUGIN_DATA_DIR, { recursive: true });
+        }
+        
+        let rawData = null;
+        
         if (fs.existsSync(PROFILES_PATH)) {
-            const data = JSON.parse(fs.readFileSync(PROFILES_PATH, 'utf8'));
+            rawData = fs.readFileSync(PROFILES_PATH, 'utf8');
+            logDebug("Profiles carregados da pasta persistente AppData.");
+        } else if (fs.existsSync(LOCAL_PROFILES_PATH)) {
+            rawData = fs.readFileSync(LOCAL_PROFILES_PATH, 'utf8');
+            try {
+                fs.writeFileSync(PROFILES_PATH, rawData, 'utf8');
+                logDebug("Profiles locais migrados para a pasta persistente AppData.");
+            } catch (err) {
+                console.error("Erro migrando profiles para AppData:", err);
+            }
+        }
+        
+        if (rawData) {
+            const data = JSON.parse(rawData);
             profiles = data.profiles || {};
             whitelist = data.whitelist || [];
             blacklist = data.blacklist || [];
         } else {
-            fs.writeFileSync(PROFILES_PATH, JSON.stringify({profiles: {}, whitelist: [], blacklist: []}, null, 2));
+            const defaultData = { profiles: {}, whitelist: [], blacklist: [] };
+            fs.writeFileSync(PROFILES_PATH, JSON.stringify(defaultData, null, 2), 'utf8');
+            profiles = defaultData.profiles;
+            whitelist = defaultData.whitelist;
+            blacklist = defaultData.blacklist;
+            logDebug("Nenhum profile encontrado. Inicializado novo em AppData.");
         }
     } catch(e) {
         console.error("Erro lendo profiles:", e);
+        logDebug("Erro lendo profiles: " + e.message);
     }
 }
 
 function saveData() {
     try {
-        fs.writeFileSync(PROFILES_PATH, JSON.stringify({profiles, whitelist, blacklist}, null, 2));
-    } catch(e) {
-        console.error("Erro salvando profiles:", e);
-    }
+        if (!fs.existsSync(PLUGIN_DATA_DIR)) {
+            fs.mkdirSync(PLUGIN_DATA_DIR, { recursive: true });
+        }
+    } catch(e) {}
+    fs.writeFile(PROFILES_PATH, JSON.stringify({profiles, whitelist, blacklist}, null, 2), 'utf8', (err) => {
+        if (err) console.error("Erro salvando profiles:", err);
+    });
 }
 
 let saveTimeout = null;
@@ -258,6 +290,7 @@ function connect() {
 
     ws.on('close', () => {
         logDebug("WS CLOSED");
+        process.exit(0);
     });
 
     ws.on('open', () => {
@@ -270,7 +303,6 @@ function connect() {
 
     ws.on('message', (data) => {
         const dataStr = data.toString();
-        try { fs.appendFileSync('c:\\Users\\alazt\\Desktop\\plugin_debug.log', dataStr + '\\n'); } catch(e){}
         logDebug("RECV: " + dataStr);
         let msg = {};
         try {
@@ -561,13 +593,17 @@ function connect() {
     });
 }
 
-// Background loop para checar foco da janela
+// Background loop para checar foco da janela e sincronizar volume de forma eficiente
+let volumeCheckCounter = 0;
 setInterval(async () => {
     if (Object.keys(activeKnobs).length === 0) return;
     try {
         const win = activeWin.sync();
         const focusedProcessName = win && win.owner ? (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase() : null;
         const focusedPath = win && win.owner ? win.owner.path : null;
+        
+        volumeCheckCounter++;
+        const shouldSyncVolume = (volumeCheckCounter % 4 === 0); // Sincroniza passivamente apenas a cada 4 ciclos (2000ms)
         
         for (const context of Object.keys(activeKnobs)) {
             const knob = activeKnobs[context];
@@ -594,15 +630,16 @@ setInterval(async () => {
             
             if (targetProcessName) {
                 if (!knob.currentActiveProcess || knob.currentActiveProcess.name !== targetProcessName) {
+                    // Sincronização imediata ao mudar de janela/aplicativo para feedback visual instantâneo!
                     knob.currentActiveProcess = { name: targetProcessName, path: targetPath };
                     let volInfo = getVolume(targetProcessName);
                     knob.currentActiveVolume = volInfo.volume;
                     knob.currentMuted = volInfo.muted;
                     updateButton(context, targetProcessName, volInfo, targetPath);
                 } else {
-                    // Sincronização inteligente de volume/mudo em tempo real se o aplicativo ativo continuar o mesmo
-                    // Evita atualizações redundantes e só executa se o botão não estiver ativamente em uso
-                    if (!knob.isSettingVolume && knob.pendingVolume === null) {
+                    // Sincronização inteligente de volume/mudo passiva apenas se o app não mudou e no ciclo correto (a cada 2s)
+                    // Evita spawnar processos C# constantemente e só executa se o botão não estiver ativamente em uso
+                    if (!knob.isSettingVolume && knob.pendingVolume === null && shouldSyncVolume) {
                         let volInfo = getVolume(targetProcessName);
                         if (volInfo.volume >= 0 && (volInfo.volume !== knob.currentActiveVolume || volInfo.muted !== knob.currentMuted)) {
                             knob.currentActiveVolume = volInfo.volume;
