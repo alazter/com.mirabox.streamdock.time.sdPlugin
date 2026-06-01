@@ -68,6 +68,32 @@ try {
     // Usar PowerShell Compress-Archive de forma nativa no Windows
     execSync(`powershell -Command "Compress-Archive -Path '${TARGET_DIR}' -DestinationPath '${ZIP_PATH}' -Force"`);
     console.log(`✨ ZIP gerado com sucesso: ${ZIP_PATH}`);
+    
+    // ---- COPIAR E INSTALAR LOCALMENTE NO STREAM DOCK ----
+    console.log("🚚 Verificando diretório de plugins local do Stream Dock...");
+    const appData = process.env.APPDATA;
+    if (appData) {
+        const streamDockPluginsDir = path.join(appData, 'HotSpot', 'StreamDock', 'plugins');
+        if (fs.existsSync(streamDockPluginsDir)) {
+            const deployDir = path.join(streamDockPluginsDir, PLUGIN_NAME);
+            console.log(`Copiando e instalando plugin limpo em: ${deployDir}`);
+            
+            // Tentar remover instalação antiga e copiar o build limpo
+            try {
+                if (fs.existsSync(deployDir)) {
+                    fs.rmSync(deployDir, { recursive: true, force: true });
+                }
+                fs.cpSync(TARGET_DIR, deployDir, { recursive: true });
+                console.log("✅ Plugin copiado e instalado com sucesso no Stream Dock local!");
+            } catch (deployErr) {
+                console.log("⚠️ Não foi possível substituir a instalação local do Stream Dock.");
+                console.log("   Isso geralmente ocorre porque o software Stream Dock está aberto e bloqueando os arquivos.");
+                console.log("   Para atualizar a instalação local, feche o software Stream Dock e execute o comando novamente.");
+            }
+        } else {
+            console.log("ℹ️ Pasta de plugins do Stream Dock não encontrada no AppData (desconsiderado).");
+        }
+    }
 } catch (error) {
     console.error("❌ Erro ao compactar arquivos:", error);
 } finally {
