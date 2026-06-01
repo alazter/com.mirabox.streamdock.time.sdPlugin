@@ -2,13 +2,26 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const PLUGIN_NAME = 'com.mirabox.streamdock.time.sdPlugin';
+// Ler o arquivo package.json para obter o nome e a versão dinâmica do plugin
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+const PLUGIN_NAME = 'com.mirabox.streamdock.time.sdPlugin'; // Nome do diretório do plugin
+const VERSION = 'v' + packageJson.version; // Ex: v1.1.0
+
+const OUTPUT_FILE_NAME = 'com.mirabox.streamdock.time.SDPlugin';
 const TEMP_DIR = path.join(__dirname, 'temp_build');
 const TARGET_DIR = path.join(TEMP_DIR, PLUGIN_NAME);
-const ZIP_PATH = path.join(__dirname, `${PLUGIN_NAME}.zip`);
-const PACKAGE_PATH = path.join(__dirname, `${PLUGIN_NAME}.SDPlugin`);
+const ZIP_PATH = path.join(__dirname, 'com.mirabox.streamdock.time.zip');
+const PACKAGE_PATH = path.join(__dirname, OUTPUT_FILE_NAME);
 
-console.log("🚀 Iniciando empacotamento do plugin...");
+// Localizar a pasta GitHub subindo os níveis necessários de forma segura
+let parentDir = path.join(__dirname, '..');
+if (path.basename(parentDir).toLowerCase() === 'projetos') {
+    parentDir = path.join(parentDir, '..'); // Sobe mais um nível se estiver dentro de 'Projetos'
+}
+const RELEASES_DIR = path.join(parentDir, 'Realeses', PLUGIN_NAME, VERSION);
+const FINAL_RELEASE_PATH = path.join(RELEASES_DIR, OUTPUT_FILE_NAME);
+
+console.log(`🚀 Iniciando empacotamento do plugin (${VERSION})...`);
 
 // 1. Limpar diretórios temporários e empacotamento anterior
 if (fs.existsSync(TEMP_DIR)) {
@@ -56,7 +69,6 @@ for (const entry of ALLOWED_ENTRIES) {
             recursive: true,
             filter: (src) => {
                 const basename = path.basename(src);
-                // Filtrar arquivos temporários ou backups dentro de pastas copiadas
                 if (basename.endsWith('.log') || basename.endsWith('.bak') || basename.endsWith('.backup')) {
                     return false;
                 }
@@ -73,39 +85,17 @@ try {
     execSync(`powershell -Command "Compress-Archive -Path '${TARGET_DIR}' -DestinationPath '${ZIP_PATH}' -Force"`);
     
     // 2. Renomear o .zip para o arquivo final .SDPlugin
-    if (fs.existsSync(PACKAGE_PATH)) {
-        fs.rmSync(PACKAGE_PATH, { force: true });
-    }
     fs.renameSync(ZIP_PATH, PACKAGE_PATH);
     console.log(`✨ Arquivo .SDPlugin gerado com sucesso: ${PACKAGE_PATH}`);
     
-    // ---- COPIAR E INSTALAR LOCALMENTE NO STREAM DOCK ----
-    console.log("🚚 Verificando diretório de plugins local do Stream Dock...");
-    const appData = process.env.APPDATA;
-    if (appData) {
-        const streamDockPluginsDir = path.join(appData, 'HotSpot', 'StreamDock', 'plugins');
-        if (fs.existsSync(streamDockPluginsDir)) {
-            const deployDir = path.join(streamDockPluginsDir, PLUGIN_NAME);
-            console.log(`Copiando e instalando plugin limpo em: ${deployDir}`);
-            
-            // Tentar remover instalação antiga e copiar o build limpo
-            try {
-                if (fs.existsSync(deployDir)) {
-                    fs.rmSync(deployDir, { recursive: true, force: true });
-                }
-                fs.cpSync(TARGET_DIR, deployDir, { recursive: true });
-                console.log("✅ Plugin copiado e instalado com sucesso no Stream Dock local!");
-            } catch (deployErr) {
-                console.log("⚠️ Não foi possível substituir a instalação local do Stream Dock.");
-                console.log("   Isso geralmente ocorre porque o software Stream Dock está aberto e bloqueando os arquivos.");
-                console.log("   Para atualizar a instalação local, feche o software Stream Dock e execute o comando novamente.");
-            }
-        } else {
-            console.log("ℹ️ Pasta de plugins do Stream Dock não encontrada no AppData (desconsiderado).");
-        }
-    }
+    // ---- ORGANIZAR E SALVAR NA PASTA DE RELEASES ----
+    console.log(`🚚 Copiando instalador para o diretório de Releases organizado...`);
+    fs.mkdirSync(RELEASES_DIR, { recursive: true });
+    fs.copyFileSync(PACKAGE_PATH, FINAL_RELEASE_PATH);
+    console.log(`✅ Lançamento local organizado e copiado com sucesso para: ${FINAL_RELEASE_PATH}`);
+    
 } catch (error) {
-    console.error("❌ Erro ao compactar arquivos:", error);
+    console.error("❌ Erro ao compactar/organizar arquivos:", error);
 } finally {
     // Limpar pasta temporária
     console.log("🧹 Limpando arquivos temporários...");
