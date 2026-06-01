@@ -6,15 +6,19 @@ const PLUGIN_NAME = 'com.mirabox.streamdock.time.sdPlugin';
 const TEMP_DIR = path.join(__dirname, 'temp_build');
 const TARGET_DIR = path.join(TEMP_DIR, PLUGIN_NAME);
 const ZIP_PATH = path.join(__dirname, `${PLUGIN_NAME}.zip`);
+const PACKAGE_PATH = path.join(__dirname, `${PLUGIN_NAME}.SDPlugin`);
 
 console.log("🚀 Iniciando empacotamento do plugin...");
 
-// 1. Limpar diretórios temporários e ZIP anterior
+// 1. Limpar diretórios temporários e empacotamento anterior
 if (fs.existsSync(TEMP_DIR)) {
     fs.rmSync(TEMP_DIR, { recursive: true, force: true });
 }
 if (fs.existsSync(ZIP_PATH)) {
     fs.rmSync(ZIP_PATH, { force: true });
+}
+if (fs.existsSync(PACKAGE_PATH)) {
+    fs.rmSync(PACKAGE_PATH, { force: true });
 }
 
 // Criar estrutura de pastas
@@ -62,12 +66,18 @@ for (const entry of ALLOWED_ENTRIES) {
     }
 }
 
-console.log("🤐 Compactando em arquivo ZIP...");
+console.log("🤐 Compactando em arquivo temporário ZIP...");
 
 try {
-    // Usar PowerShell Compress-Archive de forma nativa no Windows
+    // 1. Compactar como .zip primeiro (exigido pelo PowerShell Compress-Archive)
     execSync(`powershell -Command "Compress-Archive -Path '${TARGET_DIR}' -DestinationPath '${ZIP_PATH}' -Force"`);
-    console.log(`✨ ZIP gerado com sucesso: ${ZIP_PATH}`);
+    
+    // 2. Renomear o .zip para o arquivo final .SDPlugin
+    if (fs.existsSync(PACKAGE_PATH)) {
+        fs.rmSync(PACKAGE_PATH, { force: true });
+    }
+    fs.renameSync(ZIP_PATH, PACKAGE_PATH);
+    console.log(`✨ Arquivo .SDPlugin gerado com sucesso: ${PACKAGE_PATH}`);
     
     // ---- COPIAR E INSTALAR LOCALMENTE NO STREAM DOCK ----
     console.log("🚚 Verificando diretório de plugins local do Stream Dock...");

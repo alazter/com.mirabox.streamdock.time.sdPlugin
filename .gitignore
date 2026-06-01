@@ -6,3 +6,5 @@ node_modules/
 profiles.json
 *.backup
 *.zip
+*.SDPlugin
+*.sdPlugin
