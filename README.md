@@ -26,7 +26,7 @@ Este repositório contém uma versão modificada e aprimorada do plugin nativo d
 1. Baixe o instalador oficial do plugin (`com.mirabox.streamdock.time.SDPlugin`) diretamente na página de lançamentos:
    👉 **[Baixar Versão Recente (v1.1.0)](https://github.com/alazter/com.mirabox.streamdock.time.sdPlugin/releases/download/v1.1.0/com.mirabox.streamdock.time.SDPlugin)**
 2. Dê um **clique duplo** no arquivo `.SDPlugin` baixado.
-3. O software do Mirabox Stream Dock abrirá automaticamente e instalará o plugin de forma instantânea. Não é necessário copiar nenhuma pasta manualmente!
+3. O software do Mirabox Stream Dock abrirá automaticamente e instalará o plugin de forma instantânea.
 
 ## 📄 Licença
 Este projeto está licenciado sob a Licença GNU GPLv3 - consulte o arquivo [LICENSE](LICENSE) para obter detalhes.
