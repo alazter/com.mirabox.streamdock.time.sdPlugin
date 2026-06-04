@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v1.1.1] - 2026-06-04
+
+### Fixed / Corrigido
+- **[English]** **Custom Icon Resize:** Resized custom application and mute overlay icons to a native 144x144 pixels resolution at the Property Inspector source to prevent massive Base64 payloads from crashing the Stream Dock WebSocket buffer and terminating the plugin backend.
+- **[Português]** **Redimensionamento de Ícones Customizados:** Redimensionamento automático de ícones de aplicativos e de mute para a resolução nativa de 144x144 pixels diretamente no Property Inspector, evitando payloads imensos em Base64 que causavam travamento no buffer do WebSocket e derrubavam o backend do plugin.
+
+---
+
 ## [v1.1.0] - 2026-06-01
 
 ### Added / Adicionado

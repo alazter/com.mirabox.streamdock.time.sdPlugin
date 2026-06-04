@@ -28,7 +28,7 @@
       "PropertyInspectorPath": "./propertyInspector/custom/index.html"
     }
   ],
-  "Version": "0.0.1",
+  "Version": "1.1.1",
   "Name": "App Volume Controller",
   "Icon": "static/img/App-logo.png",
   "CategoryIcon": "static/img/App-logo.png",

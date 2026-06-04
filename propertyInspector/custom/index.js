@@ -26,6 +26,30 @@ const $dom = {
   }
 };
 
+function resizeAndLoadImage(file, callback) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 144;
+            canvas.height = 144;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, 144, 144);
+            const base64 = canvas.toDataURL('image/png');
+            callback(base64);
+        };
+        img.onerror = function() {
+            callback(event.target.result);
+        };
+        img.src = event.target.result;
+    };
+    reader.onerror = function() {
+        callback("");
+    };
+    reader.readAsDataURL(file);
+}
+
 function renderWhitelist() {
     const container = document.getElementById("whitelist-container");
     if (!container) return;
@@ -51,16 +75,13 @@ function renderWhitelist() {
         iconInput.onchange = (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const base64 = event.target.result;
+            resizeAndLoadImage(file, (base64) => {
                 if ($websocket && $websocket.sendToPlugin) {
                     $websocket.sendToPlugin({ action: "setAppIcon", process: app, image: base64 });
                 }
                 btnIcon.textContent = "✅";
                 setTimeout(() => { btnIcon.textContent = "🖼️"; }, 2000);
-            };
-            reader.readAsDataURL(file);
+            });
         };
         
         const btnIcon = document.createElement("button");
@@ -375,16 +396,13 @@ document.getElementById("set-mute-icon")?.addEventListener("click", () => {
 document.getElementById("mute-icon-input")?.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        const base64 = event.target.result;
+    resizeAndLoadImage(file, (base64) => {
         if ($websocket && $websocket.sendToPlugin) {
             $websocket.sendToPlugin({ action: "setMuteIcon", image: base64 });
         }
         document.getElementById("set-mute-icon").textContent = "✅ Saved";
         setTimeout(() => { document.getElementById("set-mute-icon").textContent = "Choose Custom Icon"; }, 2000);
-    };
-    reader.readAsDataURL(file);
+    });
 });
 
 document.getElementById("clear-mute-icon")?.addEventListener("click", () => {
@@ -465,16 +483,13 @@ function renderAudioProcesses(processes) {
     iconInput.onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const base64 = event.target.result;
+        resizeAndLoadImage(file, (base64) => {
             if ($websocket && $websocket.sendToPlugin) {
                 $websocket.sendToPlugin({ action: "setAppIcon", process: proc, image: base64 });
             }
             btnIcon.textContent = "✅";
             setTimeout(() => { btnIcon.textContent = "🖼️"; }, 2000);
-        };
-        reader.readAsDataURL(file);
+        });
     };
 
     const btnIcon = document.createElement("button");
