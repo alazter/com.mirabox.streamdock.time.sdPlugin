@@ -1,1 +1,10 @@
-{"Name":"タイムオプション","Category":"タイムオプション","com.mirabox.streamdock.time.action1":{"Name":"ワールドタイム","Tooltip":"ワールドタイム"},"com.mirabox.streamdock.time.action2":{"Name":"タイマー","Tooltip":"タイマー"},"com.mirabox.streamdock.time.action3":{"Name":"カウントダウン","Tooltip":"カウントダウン"},"Localization":{}}
+{
+    "Name": "アプリ音量コントローラー",
+    "Category": "オーディオ",
+    "Description": "つまみで複数のアプリの音量をコントロールします。",
+    "com.alazter.mirabox.volume.controller": {
+        "Name": "オーディオコントローラー",
+        "Tooltip": "オーディオコントローラー"
+    },
+    "Localization": {}
+}

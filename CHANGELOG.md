@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.1.0] - 2026-07-04
+
+### Added / Adicionado
+- **[English]** **Standalone Namespace Transition:** Decoupled the plugin identifier from the official Mirabox Clock plugin (`com.mirabox.streamdock.time.sdPlugin`) to our independent namespace `com.alazter.mirabox.volume.sdPlugin` to prevent Stream Dock app updates from overwriting custom configurations.
+- **[Português]** **Transição para Namespace Standalone:** Desconexão total do identificador de plugin oficial da Mirabox (`com.mirabox.streamdock.time.sdPlugin`) para o namespace exclusivo `com.alazter.mirabox.volume.sdPlugin`, protegendo o plugin personalizado contra substituições automáticas durante atualizações do software Stream Dock.
+- **[English]** **Automatic Configuration Migration:** Integrated a migration check that automatically copies previous user configurations (whitelist, blacklist, and custom icons) from the old AppData folder to the new standalone storage path on startup.
+- **[Português]** **Migração Automática de Configuração:** Adicionado mecanismo de importação transparente que copia as whitelists, blacklists e ícones customizados do diretório antigo do AppData para o novo armazenamento independente na primeira inicialização.
+- **[English]** **Clean Translations:** Overhauled `es.json` and `ja.json` files to remove obsolete clock/timer entries and add clean Japanese/Spanish translations for the standalone Volume Controller.
+- **[Português]** **Localizações Limpas:** Reestruturação completa das traduções nos arquivos `es.json` e `ja.json` para expurgar referências antigas do relógio original e fornecer localizações corretas para o volume de aplicativos em espanhol e japonês.
+
+---
+
 ## [v1.1.1] - 2026-06-04
 
 ### Fixed / Corrigido

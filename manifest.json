@@ -1,7 +1,7 @@
 {
   "Actions": [
     {
-      "UUID": "com.mirabox.streamdock.custom",
+      "UUID": "com.alazter.mirabox.volume.controller",
       "Icon": "static/img/App-logo.png",
       "state": 0,
       "States": [
@@ -28,7 +28,7 @@
       "PropertyInspectorPath": "./propertyInspector/custom/index.html"
     }
   ],
-  "Version": "1.1.1",
+  "Version": "0.1.0",
   "Name": "App Volume Controller",
   "Icon": "static/img/App-logo.png",
   "CategoryIcon": "static/img/App-logo.png",
@@ -37,7 +37,7 @@
   "CodePath": "run.bat",
   "CodePathWin": "run.bat",
   "SDKVersion": 1,
-  "Author": "edwardmoya97",
+  "Author": "alazter",
   "URL": "https://mirabox.key123.vip/",
   "OS": [
     {
