@@ -253,6 +253,134 @@ blacklistInputFile?.addEventListener("change", (e) => {
     e.target.value = "";
 });
 
+function renderGamesWhitelist() {
+    const container = document.getElementById("games-whitelist-container");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const list = $settings && Array.isArray($settings.gamesWhitelist) ? $settings.gamesWhitelist : [];
+    if (list.length === 0) {
+        container.innerHTML = "<div style='color: #666; font-style: italic; margin-left: 10px;'>No games in whitelist</div>";
+        return;
+    }
+
+    list.forEach(app => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "sdpi-item";
+        
+        const span = document.createElement("span");
+        span.textContent = app;
+        wrapper.appendChild(span);
+        
+        const actionsDiv = document.createElement("div");
+        
+        const iconInput = document.createElement("input");
+        iconInput.type = "file";
+        iconInput.accept = ".png, .jpg, .jpeg, .bmp, .gif";
+        iconInput.style.display = "none";
+        iconInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            resizeAndLoadImage(file, (base64) => {
+                if ($websocket && $websocket.sendToPlugin) {
+                    $websocket.sendToPlugin({ action: "setAppIcon", process: app, image: base64 });
+                }
+                btnIcon.textContent = "✅";
+                setTimeout(() => { btnIcon.textContent = "🖼️"; }, 2000);
+            });
+        };
+        
+        const btnIcon = document.createElement("button");
+        btnIcon.textContent = "🖼️";
+        btnIcon.title = "Add custom icon";
+        btnIcon.style.marginLeft = "10px";
+        btnIcon.style.cursor = "pointer";
+        btnIcon.onclick = () => iconInput.click();
+        
+        const btnClearIcon = document.createElement("button");
+        btnClearIcon.textContent = "✖️";
+        btnClearIcon.title = "Remove custom icon";
+        btnClearIcon.style.marginLeft = "5px";
+        btnClearIcon.style.cursor = "pointer";
+        btnClearIcon.style.color = "red";
+        btnClearIcon.onclick = () => {
+            if ($websocket && $websocket.sendToPlugin) {
+                $websocket.sendToPlugin({ action: "setAppIcon", process: app, image: "" });
+            }
+            btnIcon.textContent = "🖼️";
+        };
+        
+        const btn = document.createElement("button");
+        btn.textContent = "❌";
+        btn.style.marginLeft = "10px";
+        btn.style.cursor = "pointer";
+        btn.onclick = () => {
+            if ($settings && Array.isArray($settings.gamesWhitelist)) {
+                $settings.gamesWhitelist = $settings.gamesWhitelist.filter(p => p !== app);
+            }
+            if ($websocket && $websocket.sendToPlugin) {
+                $websocket.sendToPlugin({ action: "removeFromGamesWhitelist", process: app });
+            }
+            renderGamesWhitelist();
+            renderKnobConfig();
+        };
+        
+        actionsDiv.appendChild(iconInput);
+        actionsDiv.appendChild(btnIcon);
+        actionsDiv.appendChild(btnClearIcon);
+        actionsDiv.appendChild(btn);
+        
+        wrapper.appendChild(actionsDiv);
+        container.appendChild(wrapper);
+    });
+}
+
+const gamesAppInputFile = document.getElementById("games-app-input-file");
+document.getElementById("add-games-app")?.addEventListener("click", () => {
+    if (gamesAppInputFile) gamesAppInputFile.click();
+});
+
+gamesAppInputFile?.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    let appName = decodeURIComponent(file.name).split('\\').pop().split('/').pop().trim().toLowerCase();
+    
+    $websocket.sendToPlugin({
+        action: "addToGamesWhitelist",
+        process: appName
+    });
+
+    if (typeof $settings === 'undefined' || !$settings) {
+        window.$settings = { gamesWhitelist: [] };
+    }
+    if (!Array.isArray($settings.gamesWhitelist)) {
+        $settings.gamesWhitelist = [];
+    }
+    if (!$settings.gamesWhitelist.includes(appName)) {
+        $settings.gamesWhitelist.push(appName);
+    }
+    if (Array.isArray($settings.whitelist)) {
+        $settings.whitelist = $settings.whitelist.filter(p => p !== appName);
+    }
+    if (Array.isArray($settings.blacklist)) {
+        $settings.blacklist = $settings.blacklist.filter(p => p !== appName);
+    }
+    
+    if ($websocket.saveData) {
+        $websocket.saveData($settings);
+    } else if (typeof setSettings === 'function') {
+        try { setSettings($settings); } catch(err){}
+    }
+
+    renderWhitelist();
+    renderGamesWhitelist();
+    renderBlacklist();
+    renderKnobConfig();
+    
+    e.target.value = "";
+});
+
 document.getElementById("refresh-audio")?.addEventListener("click", () => {
   $websocket.sendToPlugin({ action: "getAudioProcesses" });
 });
@@ -265,6 +393,16 @@ function onPluginMessage(message) {
             $settings.whitelist = message.whitelist;
         }
         renderWhitelist();
+        renderKnobConfig();
+    }
+
+    if (message.gamesWhitelist) {
+        if (typeof $settings === 'undefined' || !$settings) {
+            window.$settings = { gamesWhitelist: message.gamesWhitelist };
+        } else {
+            $settings.gamesWhitelist = message.gamesWhitelist;
+        }
+        renderGamesWhitelist();
         renderKnobConfig();
     }
 
@@ -303,23 +441,28 @@ function renderKnobConfig() {
     const knobMode = document.getElementById("knob-mode");
     
     const clickMode = $settings?.clickMode || "whitelist";
-    // Sempre mostrar o dropdown para feedback visual, desabilitando a interação no modo dinâmico
     if (knobMode) knobMode.disabled = (clickMode === "all");
 
     if (!knobMode) return;
     
     knobMode.innerHTML = "";
     
-    if ($settings?.whitelist && $settings.whitelist.length > 0) {
-        $settings.whitelist.forEach(app => {
+    let currentPool = [];
+    if (clickMode === "games") {
+        currentPool = $settings?.gamesWhitelist || [];
+    } else {
+        currentPool = $settings?.whitelist || [];
+    }
+    
+    if (currentPool.length > 0) {
+        currentPool.forEach(app => {
             const opt = document.createElement("option");
             opt.value = app;
             opt.textContent = app;
             knobMode.appendChild(opt);
         });
         
-        // Permitir que apps temporários dinâmicos apareçam no dropdown
-        if ($settings.assignedApp && !$settings.whitelist.includes($settings.assignedApp)) {
+        if ($settings.assignedApp && !currentPool.includes($settings.assignedApp)) {
             const opt = document.createElement("option");
             opt.value = $settings.assignedApp;
             opt.textContent = `🔄 ${$settings.assignedApp}`;
@@ -425,9 +568,14 @@ function renderAudioProcesses(processes) {
     div.style.alignItems = "center";
 
     const nameSpan = document.createElement("span");
-    const isInWhitelist = $settings?.whitelist?.some(p => p === proc || p + '.exe' === proc || p === proc + '.exe');
+    const isInSoftware = $settings?.whitelist?.some(p => p === proc || p + '.exe' === proc || p === proc + '.exe');
+    const isInGames = $settings?.gamesWhitelist?.some(p => p === proc || p + '.exe' === proc || p === proc + '.exe');
 
-    nameSpan.textContent = isInWhitelist ? `✅ ${proc}` : proc;
+    let badge = "";
+    if (isInSoftware) badge = "💻 ";
+    else if (isInGames) badge = "🎮 ";
+
+    nameSpan.textContent = badge + proc;
     div.appendChild(nameSpan);
 
     const actionsDiv = document.createElement("div");
@@ -446,19 +594,13 @@ function renderAudioProcesses(processes) {
             $websocket.sendToPlugin({ action: "addToBlacklist", process: proc });
         }
         
-        // Atualizar localmente
         if (typeof $settings === 'undefined' || !$settings) {
-            window.$settings = { blacklist: [], whitelist: [] };
+            window.$settings = { blacklist: [], whitelist: [], gamesWhitelist: [] };
         }
-        if (!Array.isArray($settings.blacklist)) {
-            $settings.blacklist = [];
-        }
-        if (!$settings.blacklist.includes(proc)) {
-            $settings.blacklist.push(proc);
-        }
-        if (Array.isArray($settings.whitelist)) {
-            $settings.whitelist = $settings.whitelist.filter(p => p !== proc);
-        }
+        if (!Array.isArray($settings.blacklist)) $settings.blacklist = [];
+        if (!$settings.blacklist.includes(proc)) $settings.blacklist.push(proc);
+        if (Array.isArray($settings.whitelist)) $settings.whitelist = $settings.whitelist.filter(p => p !== proc);
+        if (Array.isArray($settings.gamesWhitelist)) $settings.gamesWhitelist = $settings.gamesWhitelist.filter(p => p !== proc);
 
         if ($websocket.saveData) {
             $websocket.saveData($settings);
@@ -467,10 +609,10 @@ function renderAudioProcesses(processes) {
         }
 
         renderWhitelist();
+        renderGamesWhitelist();
         renderBlacklist();
         renderKnobConfig();
 
-        // Animação/transição de 300ms antes de ocultar
         setTimeout(() => {
             renderAudioProcesses(processes.filter(p => p !== proc));
         }, 300);
@@ -517,45 +659,57 @@ function renderAudioProcesses(processes) {
     actionsDiv.appendChild(btnIcon);
     actionsDiv.appendChild(btnClearIcon);
 
-    if (!isInWhitelist) {
-      const btn = document.createElement("button");
-      btn.textContent = "➕";
-      btn.title = "Agregar a whitelist";
-      btn.style.marginLeft = "10px";
-      btn.style.cursor = "pointer";
-      btn.onclick = () => {
-        $websocket.sendToPlugin({
-          action: "addToWhitelist",
-          process: proc
-        });
-        // Actualizar localmente también
-        if (typeof $settings === 'undefined' || !$settings) {
-            window.$settings = { whitelist: [], blacklist: [] };
-        }
-        if (!Array.isArray($settings.whitelist)) {
-            $settings.whitelist = [];
-        }
-        if (!$settings.whitelist.includes(proc)) {
-            $settings.whitelist.push(proc);
-        }
-        if (Array.isArray($settings.blacklist)) {
-            $settings.blacklist = $settings.blacklist.filter(p => p !== proc);
-        }
-        
-        if ($websocket.saveData) {
-            $websocket.saveData($settings);
-        } else if (typeof setSettings === 'function') {
-            try { setSettings($settings); } catch(err){}
-        }
+    // Botão 💻 Adicionar à Whitelist de Softwares
+    const btnSoftware = document.createElement("button");
+    btnSoftware.textContent = "💻";
+    btnSoftware.title = "Add to Software Whitelist";
+    btnSoftware.style.marginLeft = "6px";
+    btnSoftware.style.cursor = "pointer";
+    btnSoftware.onclick = () => {
+        $websocket.sendToPlugin({ action: "addToWhitelist", process: proc });
+
+        if (typeof $settings === 'undefined' || !$settings) window.$settings = { whitelist: [], gamesWhitelist: [], blacklist: [] };
+        if (!Array.isArray($settings.whitelist)) $settings.whitelist = [];
+        if (!$settings.whitelist.includes(proc)) $settings.whitelist.push(proc);
+        if (Array.isArray($settings.gamesWhitelist)) $settings.gamesWhitelist = $settings.gamesWhitelist.filter(p => p !== proc);
+        if (Array.isArray($settings.blacklist)) $settings.blacklist = $settings.blacklist.filter(p => p !== proc);
+
+        if ($websocket.saveData) $websocket.saveData($settings);
+        else if (typeof setSettings === 'function') { try { setSettings($settings); } catch(err){} }
 
         renderWhitelist();
+        renderGamesWhitelist();
         renderBlacklist();
         renderKnobConfig();
         renderAudioProcesses(processes);
-      };
+    };
+    actionsDiv.appendChild(btnSoftware);
 
-      actionsDiv.appendChild(btn);
-    }
+    // Botão 🎮 Adicionar à Whitelist de Jogos
+    const btnGames = document.createElement("button");
+    btnGames.textContent = "🎮";
+    btnGames.title = "Add to Games Whitelist";
+    btnGames.style.marginLeft = "6px";
+    btnGames.style.cursor = "pointer";
+    btnGames.onclick = () => {
+        $websocket.sendToPlugin({ action: "addToGamesWhitelist", process: proc });
+
+        if (typeof $settings === 'undefined' || !$settings) window.$settings = { whitelist: [], gamesWhitelist: [], blacklist: [] };
+        if (!Array.isArray($settings.gamesWhitelist)) $settings.gamesWhitelist = [];
+        if (!$settings.gamesWhitelist.includes(proc)) $settings.gamesWhitelist.push(proc);
+        if (Array.isArray($settings.whitelist)) $settings.whitelist = $settings.whitelist.filter(p => p !== proc);
+        if (Array.isArray($settings.blacklist)) $settings.blacklist = $settings.blacklist.filter(p => p !== proc);
+
+        if ($websocket.saveData) $websocket.saveData($settings);
+        else if (typeof setSettings === 'function') { try { setSettings($settings); } catch(err){} }
+
+        renderWhitelist();
+        renderGamesWhitelist();
+        renderBlacklist();
+        renderKnobConfig();
+        renderAudioProcesses(processes);
+    };
+    actionsDiv.appendChild(btnGames);
 
     div.appendChild(actionsDiv);
     list.appendChild(div);

@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.2.0] - 2026-07-05
+
+### Added / Adicionado
+- **[English]** **Dedicated Games Whitelist:** Introduced a dedicated Games Whitelist alongside the Software Whitelist, allowing users to separate work/media apps (Discord, Spotify, Chrome) from games (League of Legends, CS:GO, GTA).
+- **[Português]** **Whitelist Dedicada de Jogos:** Criada uma Whitelist exclusiva para Jogos ao lado da Whitelist de Softwares, permitindo separar o controle de volume de aplicativos de trabalho/mídia (Discord, Spotify, Chrome) dos seus jogos (League of Legends, CS:GO, GTA).
+- **[English]** **App Pool Selection:** Added "Games Whitelist" as a selectable option in the Knob's App Pool radio group, giving complete control over which application list each knob rotates or tracks.
+- **[Português]** **Seleção de App Pool:** Adicionada a opção "Games Whitelist" no grupo de seleção do App Pool do Knob, permitindo escolher se o botão alterna apenas entre softwares, apenas entre jogos ou por todos os apps.
+- **[English]** **Quick Add Buttons:** Enhanced the Detected Audio Processes section with `💻` (Add to Software Whitelist) and `🎮` (Add to Games Whitelist) action buttons.
+- **[Português]** **Botões Rápidos de Cadastro:** Atualizada a seção de Processos Detectados com botões diretos para enviar aplicativos para a Whitelist de Software (`💻`) ou para a Whitelist de Jogos (`🎮`).
+
+---
+
 ## [v0.1.1] - 2026-07-05
 
 ### Fixed / Corrigido

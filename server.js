@@ -34,6 +34,7 @@ try {
 let ws;
 let activeKnobs = {}; // context -> { assignedApp, clickMode, currentActiveProcess: { name, path }, currentActiveVolume, isSettingVolume, pendingVolume }
 let whitelist = [];
+let gamesWhitelist = [];
 let blacklist = [];
 let profiles = {};
 let iconCache = {};
@@ -68,7 +69,7 @@ const OLD_PROFILES_PATH = path.join(OLD_PLUGIN_DATA_DIR, 'profiles.json');
 const LOCAL_PROFILES_PATH = path.join(__dirname, 'profiles.json');
 const VOL_CTRL_CMD = path.join(__dirname, 'VolumeControl.exe');
 
-// Carregar perfis, whitelist e blacklist de forma persistente com migração automatizada
+// Carregar perfis, whitelist, gamesWhitelist e blacklist de forma persistente com migração automatizada
 function loadData() {
     try {
         if (!fs.existsSync(PLUGIN_DATA_DIR)) {
@@ -102,12 +103,14 @@ function loadData() {
             const data = JSON.parse(rawData);
             profiles = data.profiles || {};
             whitelist = data.whitelist || [];
+            gamesWhitelist = data.gamesWhitelist || [];
             blacklist = data.blacklist || [];
         } else {
-            const defaultData = { profiles: {}, whitelist: [], blacklist: [] };
+            const defaultData = { profiles: {}, whitelist: [], gamesWhitelist: [], blacklist: [] };
             fs.writeFileSync(PROFILES_PATH, JSON.stringify(defaultData, null, 2), 'utf8');
             profiles = defaultData.profiles;
             whitelist = defaultData.whitelist;
+            gamesWhitelist = defaultData.gamesWhitelist;
             blacklist = defaultData.blacklist;
             logDebug("Nenhum profile encontrado. Inicializado novo em AppData.");
         }
@@ -123,7 +126,7 @@ function saveData() {
             fs.mkdirSync(PLUGIN_DATA_DIR, { recursive: true });
         }
     } catch(e) {}
-    fs.writeFile(PROFILES_PATH, JSON.stringify({profiles, whitelist, blacklist}, null, 2), 'utf8', (err) => {
+    fs.writeFile(PROFILES_PATH, JSON.stringify({profiles, whitelist, gamesWhitelist, blacklist}, null, 2), 'utf8', (err) => {
         if (err) console.error("Erro salvando profiles:", err);
     });
 }
@@ -386,18 +389,19 @@ function connect() {
             if (uiMsg.action === "addToWhitelist") {
                 const proc = uiMsg.process.toLowerCase();
                 if (!whitelist.includes(proc)) whitelist.push(proc);
+                gamesWhitelist = gamesWhitelist.filter(p => p !== proc);
                 blacklist = blacklist.filter(p => p !== proc); // Exclusividade mútua
-                console.log("Adicionado à Whitelist:", proc);
+                console.log("Adicionado à Software Whitelist:", proc);
                 saveData();
                 sendToSD({
                     event: "sendToPropertyInspector",
                     context: context,
-                    payload: { whitelist: whitelist, blacklist: blacklist }
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                 });
                 sendToSD({
                     event: "setSettings",
                     context: context,
-                    payload: { whitelist: whitelist, blacklist: blacklist }
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                 });
             } else if (uiMsg.action === "removeFromWhitelist") {
                 const proc = uiMsg.process.toLowerCase();
@@ -406,17 +410,49 @@ function connect() {
                 sendToSD({
                     event: "sendToPropertyInspector",
                     context: context,
-                    payload: { whitelist: whitelist, blacklist: blacklist }
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                 });
                 sendToSD({
                     event: "setSettings",
                     context: context,
-                    payload: { whitelist: whitelist, blacklist: blacklist }
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
+                });
+            } else if (uiMsg.action === "addToGamesWhitelist") {
+                const proc = uiMsg.process.toLowerCase();
+                if (!gamesWhitelist.includes(proc)) gamesWhitelist.push(proc);
+                whitelist = whitelist.filter(p => p !== proc);
+                blacklist = blacklist.filter(p => p !== proc); // Exclusividade mútua
+                console.log("Adicionado à Games Whitelist:", proc);
+                saveData();
+                sendToSD({
+                    event: "sendToPropertyInspector",
+                    context: context,
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
+                });
+                sendToSD({
+                    event: "setSettings",
+                    context: context,
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
+                });
+            } else if (uiMsg.action === "removeFromGamesWhitelist") {
+                const proc = uiMsg.process.toLowerCase();
+                gamesWhitelist = gamesWhitelist.filter(p => p !== proc);
+                saveData();
+                sendToSD({
+                    event: "sendToPropertyInspector",
+                    context: context,
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
+                });
+                sendToSD({
+                    event: "setSettings",
+                    context: context,
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                 });
             } else if (uiMsg.action === "addToBlacklist") {
                 const proc = uiMsg.process.toLowerCase();
                 if (!blacklist.includes(proc)) blacklist.push(proc);
                 whitelist = whitelist.filter(p => p !== proc); // Exclusividade mútua
+                gamesWhitelist = gamesWhitelist.filter(p => p !== proc);
                 console.log("Adicionado à Blacklist:", proc);
                 
                 // Desassociar o aplicativo caso ele estivesse ativamente associado a algum knob
@@ -433,12 +469,12 @@ function connect() {
                 sendToSD({
                     event: "sendToPropertyInspector",
                     context: context,
-                    payload: { whitelist: whitelist, blacklist: blacklist }
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                 });
                 sendToSD({
                     event: "setSettings",
                     context: context,
-                    payload: { whitelist: whitelist, blacklist: blacklist }
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                 });
             } else if (uiMsg.action === "removeFromBlacklist") {
                 const proc = uiMsg.process.toLowerCase();
@@ -448,12 +484,12 @@ function connect() {
                 sendToSD({
                     event: "sendToPropertyInspector",
                     context: context,
-                    payload: { whitelist: whitelist, blacklist: blacklist }
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                 });
                 sendToSD({
                     event: "setSettings",
                     context: context,
-                    payload: { whitelist: whitelist, blacklist: blacklist }
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                 });
             } else if (uiMsg.action === "setAppIcon") {
                 const proc = uiMsg.process.toLowerCase();
@@ -502,7 +538,7 @@ function connect() {
                     sendToSD({
                         event: "sendToPropertyInspector",
                         context: context,
-                        payload: { audioProcesses: filteredProcessList, whitelist: whitelist, blacklist: blacklist }
+                        payload: { audioProcesses: filteredProcessList, whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                     });
                 } catch(e) {
                     console.error("Erro ao listar processos de audio: ", e);
@@ -511,7 +547,7 @@ function connect() {
                 sendToSD({
                     event: "sendToPropertyInspector",
                     context: context,
-                    payload: { whitelist: whitelist, blacklist: blacklist }
+                    payload: { whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                 });
             } else if (uiMsg.action === "setKnobConfig") {
                 if (activeKnobs[context]) {
@@ -530,6 +566,7 @@ function connect() {
                             knobAction: activeKnobs[context].knobAction,
                             screenAction: activeKnobs[context].screenAction,
                             whitelist: whitelist,
+                            gamesWhitelist: gamesWhitelist,
                             blacklist: blacklist
                         }
                     });
@@ -541,7 +578,8 @@ function connect() {
             const ticks = msg.payload.ticks || 0;
             const knob = activeKnobs[context];
             if (knob && ticks !== 0 && knob.currentActiveProcess) {
-                if (knob.clickMode !== "all" && !whitelist.includes(knob.currentActiveProcess.name)) return;
+                if (knob.clickMode === "whitelist" && !whitelist.includes(knob.currentActiveProcess.name)) return;
+                if (knob.clickMode === "games" && !gamesWhitelist.includes(knob.currentActiveProcess.name)) return;
                 let currentVol = knob.currentActiveVolume;
                 if (currentVol >= 0) {
                     let step = profiles.volumeStep || 5;
@@ -585,6 +623,9 @@ function connect() {
                         if (knob.clickMode === "whitelist") {
                             cyclePool = processList.filter(p => whitelist.includes(p) && !blacklist.includes(p));
                             if (cyclePool.length === 0) cyclePool = whitelist.filter(p => !blacklist.includes(p));
+                        } else if (knob.clickMode === "games") {
+                            cyclePool = processList.filter(p => gamesWhitelist.includes(p) && !blacklist.includes(p));
+                            if (cyclePool.length === 0) cyclePool = gamesWhitelist.filter(p => !blacklist.includes(p));
                         } else {
                             cyclePool = processList.filter(p => !blacklist.includes(p));
                             const win = activeWin.sync();
@@ -604,7 +645,7 @@ function connect() {
                             knob.assignedApp = nextApp;
                             knob.currentActiveProcess = null; // force update
                             
-                            sendToSD({ event: "setSettings", context: context, payload: { assignedApp: nextApp, clickMode: knob.clickMode, knobAction: knob.knobAction, screenAction: knob.screenAction, whitelist: whitelist, blacklist: blacklist } });
+                            sendToSD({ event: "setSettings", context: context, payload: { assignedApp: nextApp, clickMode: knob.clickMode, knobAction: knob.knobAction, screenAction: knob.screenAction, whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist } });
                             sendToSD({ event: "sendToPropertyInspector", context: context, payload: { assignedApp: nextApp } });
                         }
                     } catch(e) {}
@@ -644,12 +685,23 @@ setInterval(async () => {
             }
             
             if (!targetProcessName) {
-                if (focusedProcessName && whitelist.includes(focusedProcessName) && !blacklist.includes(focusedProcessName)) {
-                    targetProcessName = focusedProcessName;
-                    targetPath = focusedPath;
-                } else if (knob.currentActiveProcess && whitelist.includes(knob.currentActiveProcess.name) && !blacklist.includes(knob.currentActiveProcess.name)) {
-                    targetProcessName = knob.currentActiveProcess.name;
-                    targetPath = knob.currentActiveProcess.path;
+                let targetList = [];
+                if (knob.clickMode === "games") targetList = gamesWhitelist;
+                else if (knob.clickMode === "whitelist") targetList = whitelist;
+
+                if (knob.clickMode === "all") {
+                    if (focusedProcessName && !blacklist.includes(focusedProcessName)) {
+                        targetProcessName = focusedProcessName;
+                        targetPath = focusedPath;
+                    }
+                } else {
+                    if (focusedProcessName && targetList.includes(focusedProcessName) && !blacklist.includes(focusedProcessName)) {
+                        targetProcessName = focusedProcessName;
+                        targetPath = focusedPath;
+                    } else if (knob.currentActiveProcess && targetList.includes(knob.currentActiveProcess.name) && !blacklist.includes(knob.currentActiveProcess.name)) {
+                        targetProcessName = knob.currentActiveProcess.name;
+                        targetPath = knob.currentActiveProcess.path;
+                    }
                 }
             } else {
                 if (knob.currentActiveProcess && knob.currentActiveProcess.name === targetProcessName) {

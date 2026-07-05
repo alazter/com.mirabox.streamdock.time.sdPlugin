@@ -21,7 +21,11 @@
       <div class="sdpi-item-value">
         <div class="sdpi-item-child">
           <input id="click-whitelist" type="radio" name="clickMode" value="whitelist" checked>
-          <label for="click-whitelist" class="sdpi-item-label"><span></span>Whitelist Only</label>
+          <label for="click-whitelist" class="sdpi-item-label"><span></span>Software Whitelist</label>
+        </div>
+        <div class="sdpi-item-child">
+          <input id="click-games" type="radio" name="clickMode" value="games">
+          <label for="click-games" class="sdpi-item-label"><span></span>Games Whitelist</label>
         </div>
         <div class="sdpi-item-child">
           <input id="click-all" type="radio" name="clickMode" value="all">
@@ -74,6 +78,11 @@
     <div id="whitelist-container"></div>
     <input type="file" id="app-input-file" accept=".exe" style="display: none" />
     <button id="add-app">Add Manually (.exe)</button>
+
+    <h3>Games Whitelist</h3>
+    <div id="games-whitelist-container"></div>
+    <input type="file" id="games-app-input-file" accept=".exe" style="display: none" />
+    <button id="add-games-app">Add Game Manually (.exe)</button>
 
     <h3>Detected audio processes</h3>
     <button id="refresh-audio">Refresh processes</button>
