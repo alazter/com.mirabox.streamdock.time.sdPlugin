@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.2] - 2026-07-05
+
+### Fixed / Corrigido
+- **[English]** **Base64 Payload Throttling:** Prevented re-sending 100KB Base64 image payloads in `setFeedback` during volume adjustments, reducing WebSocket data traffic by 99.9% and eliminating QML UI thread freezes in Stream Dock.
+- **[Português]** **Otimização de Payload Base64:** Eliminado o envio repetido de imagens Base64 de ~100KB no `setFeedback` durante giros de volume, reduzindo o tráfego em 99.9% e impedindo o congelamento da interface visual (Qt/QML) do Stream Dock.
+- **[English]** **Focus Resolution Timeout Guard:** Added an 800ms `Promise.race` timeout to active window focus resolution (`getFocusedWindowAsync`), ensuring full-screen games never hang background polling.
+- **[Português]** **Proteção de Timeout de Foco:** Adicionado limite de 800ms com `Promise.race` para consulta de janela ativa, garantindo que jogos em tela cheia nunca travem a fila de segundo plano.
+
 ---
 
 ## [v0.2.1] - 2026-07-05

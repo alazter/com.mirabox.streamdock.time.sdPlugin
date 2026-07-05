@@ -43,18 +43,19 @@ let processPathCache = {};
 function getPathFromProcessNameAsync(processName) {
     return new Promise((resolve) => {
         if (!processName) return resolve(null);
-        if (processPathCache[processName]) {
-            return resolve(processPathCache[processName] === 'NOT_FOUND' ? null : processPathCache[processName]);
+        const key = processName.toLowerCase();
+        if (processPathCache[key] !== undefined) {
+            return resolve(processPathCache[key] === 'NOT_FOUND' ? null : processPathCache[key]);
         }
         exec(`"${VOL_CTRL_CMD}" path "${processName}"`, { stdio: ['ignore', 'pipe', 'ignore'] }, (err, stdout) => {
             if (!err && stdout) {
                 let pathStr = stdout.toString().trim();
                 if (pathStr && fs.existsSync(pathStr)) {
-                    processPathCache[processName] = pathStr;
+                    processPathCache[key] = pathStr;
                     return resolve(pathStr);
                 }
             }
-            processPathCache[processName] = 'NOT_FOUND';
+            processPathCache[key] = 'NOT_FOUND';
             return resolve(null);
         });
     });
@@ -212,6 +213,18 @@ function sendToSD(payload) {
     }
 }
 
+let isCheckingFocus = false;
+function getFocusedWindowAsync() {
+    if (isCheckingFocus) return Promise.resolve(null);
+    isCheckingFocus = true;
+    return Promise.race([
+        activeWin(),
+        new Promise((resolve) => setTimeout(() => resolve(null), 800))
+    ]).catch(() => null).finally(() => {
+        isCheckingFocus = false;
+    });
+}
+
 async function updateButton(context, processName, volumeInfo, exePath) {
     if (!context) return;
     const knob = activeKnobs[context];
@@ -289,7 +302,9 @@ async function updateButton(context, processName, volumeInfo, exePath) {
     }
 
     let indicatorVal = volume >= 0 ? volume : 0;
-    if (knob.lastProcessName !== processName || knob.lastFeedbackValue !== displayVol || knob.lastIndicator !== indicatorVal || imageChanged) {
+    let processChanged = (knob.lastProcessName !== processName);
+
+    if (processChanged || knob.lastFeedbackValue !== displayVol || knob.lastIndicator !== indicatorVal || imageChanged) {
         knob.lastProcessName = processName;
         knob.lastFeedbackValue = displayVol;
         knob.lastIndicator = indicatorVal;
@@ -299,7 +314,8 @@ async function updateButton(context, processName, volumeInfo, exePath) {
             value: displayVol,
             indicator: indicatorVal
         };
-        if (image) {
+        // CRITICAL PERFORMANCE FIX v0.2.2: Only attach 100KB Base64 icon when icon or process actually changes!
+        if (image && (imageChanged || processChanged)) {
             feedbackPayload.icon = image;
         }
         sendToSD({
@@ -645,7 +661,7 @@ function connect() {
                         } else {
                             cyclePool = processList.filter(p => !blacklist.includes(p));
                             try {
-                                const win = await activeWin();
+                                const win = await getFocusedWindowAsync();
                                 if (win && win.owner) {
                                     const focusedProcessName = (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase();
                                     if (focusedProcessName.endsWith('.exe') && !blacklist.includes(focusedProcessName) && !cyclePool.includes(focusedProcessName)) {
@@ -686,7 +702,7 @@ setInterval(async () => {
 
         if (needsFocusTracking) {
             try {
-                const win = await activeWin();
+                const win = await getFocusedWindowAsync();
                 focusedProcessName = win && win.owner ? (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase() : null;
                 focusedPath = win && win.owner ? win.owner.path : null;
             } catch(e) {}
