@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.2.1] - 2026-07-05
+
+### Fixed / Corrigido
+- **[English]** **Complete Elimination of Synchronous Blockers:** Replaced all `activeWin.sync()` and `execSync` calls with non-blocking async `await activeWin()` and asynchronous Promises (`exec`), completely preventing Stream Dock UI freezes.
+- **[Português]** **Eliminação Completa de Bloqueios Síncronos:** Substituídas todas as chamadas síncronas `activeWin.sync()` e `execSync` por operações assíncronas `await activeWin()` e `exec` com Promises, impedindo totalmente o congelamento da interface do Stream Dock.
+
+---
+
 ## [v0.2.0] - 2026-07-05
 
 ### Added / Adicionado

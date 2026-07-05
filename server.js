@@ -40,20 +40,24 @@ let profiles = {};
 let iconCache = {};
 let processPathCache = {};
 
-function getPathFromProcessName(processName) {
-    if (processPathCache[processName]) {
-        return processPathCache[processName] === 'NOT_FOUND' ? null : processPathCache[processName];
-    }
-    try {
-        let pathStr = execSync(`"${VOL_CTRL_CMD}" path "${processName}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-        if (pathStr && fs.existsSync(pathStr)) {
-            processPathCache[processName] = pathStr;
-            return pathStr;
+function getPathFromProcessNameAsync(processName) {
+    return new Promise((resolve) => {
+        if (!processName) return resolve(null);
+        if (processPathCache[processName]) {
+            return resolve(processPathCache[processName] === 'NOT_FOUND' ? null : processPathCache[processName]);
         }
-    } catch(e) {}
-    
-    processPathCache[processName] = 'NOT_FOUND';
-    return null;
+        exec(`"${VOL_CTRL_CMD}" path "${processName}"`, { stdio: ['ignore', 'pipe', 'ignore'] }, (err, stdout) => {
+            if (!err && stdout) {
+                let pathStr = stdout.toString().trim();
+                if (pathStr && fs.existsSync(pathStr)) {
+                    processPathCache[processName] = pathStr;
+                    return resolve(pathStr);
+                }
+            }
+            processPathCache[processName] = 'NOT_FOUND';
+            return resolve(null);
+        });
+    });
 }
 
 function logDebug(msg) {
@@ -140,14 +144,18 @@ function saveDataDebounced() {
     }, 1000);
 }
 
-function getVolume(pid) {
-    try {
-        const out = execSync(`"${VOL_CTRL_CMD}" "${pid}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-        const parts = out.split('|');
-        return { volume: parseInt(parts[0], 10), muted: parts.length > 1 ? parseInt(parts[1], 10) === 1 : false };
-    } catch (e) {
-        return { volume: -1, muted: false };
-    }
+function getVolumeAsync(pid) {
+    return new Promise((resolve) => {
+        if (!pid) return resolve({ volume: -1, muted: false });
+        exec(`"${VOL_CTRL_CMD}" "${pid}"`, { stdio: ['ignore', 'pipe', 'ignore'] }, (err, stdout) => {
+            if (err || !stdout) return resolve({ volume: -1, muted: false });
+            const parts = stdout.toString().trim().split('|');
+            return resolve({
+                volume: parseInt(parts[0], 10),
+                muted: parts.length > 1 ? parseInt(parts[1], 10) === 1 : false
+            });
+        });
+    });
 }
 
 function applyVolume(context) {
@@ -161,7 +169,7 @@ function applyVolume(context) {
     exec(`"${VOL_CTRL_CMD}" "${knob.currentActiveProcess.name}" ${volToSet}`, (error, stdout, stderr) => {
         if (activeKnobs[context]) activeKnobs[context].isSettingVolume = false;
         
-        if (!error) {
+        if (!error && stdout) {
             let parts = stdout.toString().trim().split('|');
             let finalVol = parseInt(parts[0], 10);
             if (!isNaN(finalVol) && finalVol >= 0) {
@@ -179,19 +187,23 @@ function applyVolume(context) {
     });
 }
 
-// Extrair icone usando powershell com cache
-function getIconBase64(exePath) {
-    if (!exePath) return null;
-    if (iconCache[exePath] !== undefined) return iconCache[exePath];
-    try {
-        const base64Data = execSync(`"${VOL_CTRL_CMD}" icon "${exePath}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-        if (base64Data && base64Data.startsWith("data:image/png;base64,")) {
-            iconCache[exePath] = base64Data;
-            return base64Data;
-        }
-    } catch (e) {}
-    iconCache[exePath] = null; // Cache null on failure to prevent calling execSync repeatedly
-    return null;
+// Extrair icone assincronamente com cache
+function getIconBase64Async(exePath) {
+    return new Promise((resolve) => {
+        if (!exePath) return resolve(null);
+        if (iconCache[exePath] !== undefined) return resolve(iconCache[exePath]);
+        exec(`"${VOL_CTRL_CMD}" icon "${exePath}"`, { stdio: ['ignore', 'pipe', 'ignore'] }, (err, stdout) => {
+            if (!err && stdout) {
+                const base64Data = stdout.toString().trim();
+                if (base64Data && base64Data.startsWith("data:image/png;base64,")) {
+                    iconCache[exePath] = base64Data;
+                    return resolve(base64Data);
+                }
+            }
+            iconCache[exePath] = null; // Cache null on failure to prevent calling icon extraction repeatedly
+            return resolve(null);
+        });
+    });
 }
 
 function sendToSD(payload) {
@@ -200,7 +212,7 @@ function sendToSD(payload) {
     }
 }
 
-function updateButton(context, processName, volumeInfo, exePath) {
+async function updateButton(context, processName, volumeInfo, exePath) {
     if (!context) return;
     const knob = activeKnobs[context];
     if (!knob) return;
@@ -242,10 +254,10 @@ function updateButton(context, processName, volumeInfo, exePath) {
             }
         } else {
             if (!exePath) {
-                exePath = getPathFromProcessName(processName);
+                exePath = await getPathFromProcessNameAsync(processName);
             }
             if (exePath) {
-                image = getIconBase64(exePath);
+                image = await getIconBase64Async(exePath);
             }
         }
     }
@@ -320,7 +332,7 @@ function connect() {
         });
     });
 
-    ws.on('message', (data) => {
+    ws.on('message', async (data) => {
         const dataStr = data.toString();
         logDebug("RECV: " + dataStr);
         let msg = {};
@@ -461,7 +473,7 @@ function connect() {
                     if (k.assignedApp === proc || k.assignedApp === proc + '.exe' || k.assignedApp.replace('.exe', '') === proc) {
                         k.assignedApp = "";
                         k.currentActiveProcess = null;
-                        updateButton(ctx, "", -1, null);
+                        await updateButton(ctx, "", -1, null);
                     }
                 }
                 
@@ -503,7 +515,7 @@ function connect() {
                     const k = activeKnobs[ctx];
                     if (k.currentActiveProcess && (k.currentActiveProcess.name === proc || k.currentActiveProcess.name === proc + '.exe' || k.currentActiveProcess.name.replace('.exe', '') === proc)) {
                         k.lastImage = null; // força reenviar
-                        updateButton(ctx, k.currentActiveProcess.name, k.currentActiveVolume, k.currentActiveProcess.path);
+                        await updateButton(ctx, k.currentActiveProcess.name, k.currentActiveVolume, k.currentActiveProcess.path);
                     }
                 }
             } else if (uiMsg.action === "setVolumeStep") {
@@ -518,15 +530,17 @@ function connect() {
                     const k = activeKnobs[ctx];
                     if (k.currentActiveProcess && k.currentMuted) {
                         k.lastImage = null; // force resend
-                        updateButton(ctx, k.currentActiveProcess.name, { volume: k.currentActiveVolume, muted: k.currentMuted }, k.currentActiveProcess.path);
+                        await updateButton(ctx, k.currentActiveProcess.name, { volume: k.currentActiveVolume, muted: k.currentMuted }, k.currentActiveProcess.path);
                     }
                 }
             } else if (uiMsg.action === "getAudioProcesses") {
-                try {
-                    const processesRaw = execSync(`"${VOL_CTRL_CMD}" list`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+                exec(`"${VOL_CTRL_CMD}" list`, { stdio: ['ignore', 'pipe', 'ignore'] }, (err, stdout) => {
                     let processList = [];
-                    if (processesRaw.length > 0) processList = processesRaw.split(',').map(p => p.toLowerCase());
- 
+                    if (!err && stdout) {
+                        const processesRaw = stdout.toString().trim();
+                        if (processesRaw.length > 0) processList = processesRaw.split(',').map(p => p.toLowerCase());
+                    }
+
                     // Garantir que streamdock.exe sempre apareça na lista de detectados para poder ser bloqueado
                     if (!processList.includes("streamdock.exe")) {
                         processList.push("streamdock.exe");
@@ -540,9 +554,7 @@ function connect() {
                         context: context,
                         payload: { audioProcesses: filteredProcessList, whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist }
                     });
-                } catch(e) {
-                    console.error("Erro ao listar processos de audio: ", e);
-                }
+                });
             } else if (uiMsg.action === "requestGlobalState") {
                 sendToSD({
                     event: "sendToPropertyInspector",
@@ -587,7 +599,7 @@ function connect() {
                     newVol = Math.max(0, Math.min(100, newVol));
                     
                     knob.currentActiveVolume = newVol;
-                    updateButton(context, knob.currentActiveProcess.name, { volume: newVol, muted: knob.currentMuted }, knob.currentActiveProcess.path);
+                    await updateButton(context, knob.currentActiveProcess.name, { volume: newVol, muted: knob.currentMuted }, knob.currentActiveProcess.path);
                     
                     knob.pendingVolume = newVol;
                     applyVolume(context);
@@ -604,20 +616,24 @@ function connect() {
 
                 if (action === "mute") {
                     if (knob.currentActiveProcess) {
-                        try {
-                            const out = execSync(`"${VOL_CTRL_CMD}" "${knob.currentActiveProcess.name}" toggle_mute`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-                            const parts = out.split('|');
-                            if (parts.length > 1) {
-                                knob.currentMuted = (parseInt(parts[1], 10) === 1);
-                                knob.lastImage = null; // Force refresh image overlay
-                                updateButton(context, knob.currentActiveProcess.name, { volume: knob.currentActiveVolume, muted: knob.currentMuted }, knob.currentActiveProcess.path);
+                        exec(`"${VOL_CTRL_CMD}" "${knob.currentActiveProcess.name}" toggle_mute`, { stdio: ['ignore', 'pipe', 'ignore'] }, async (err, stdout) => {
+                            if (!err && stdout) {
+                                const parts = stdout.toString().trim().split('|');
+                                if (parts.length > 1) {
+                                    knob.currentMuted = (parseInt(parts[1], 10) === 1);
+                                    knob.lastImage = null; // Force refresh image overlay
+                                    await updateButton(context, knob.currentActiveProcess.name, { volume: knob.currentActiveVolume, muted: knob.currentMuted }, knob.currentActiveProcess.path);
+                                }
                             }
-                        } catch(e) { console.error("Error toggling mute", e); }
+                        });
                     }
                 } else if (action === "cycle") {
-                    try {
-                        const processesRaw = execSync(`"${VOL_CTRL_CMD}" list`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-                        let processList = processesRaw.length > 0 ? processesRaw.split(',').map(p => p.toLowerCase()) : [];
+                    exec(`"${VOL_CTRL_CMD}" list`, { stdio: ['ignore', 'pipe', 'ignore'] }, async (err, stdout) => {
+                        let processList = [];
+                        if (!err && stdout) {
+                            const processesRaw = stdout.toString().trim();
+                            if (processesRaw.length > 0) processList = processesRaw.split(',').map(p => p.toLowerCase());
+                        }
                         
                         let cyclePool = [];
                         if (knob.clickMode === "whitelist") {
@@ -628,13 +644,15 @@ function connect() {
                             if (cyclePool.length === 0) cyclePool = gamesWhitelist.filter(p => !blacklist.includes(p));
                         } else {
                             cyclePool = processList.filter(p => !blacklist.includes(p));
-                            const win = activeWin.sync();
-                            if (win && win.owner) {
-                                const focusedProcessName = (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase();
-                                if (focusedProcessName.endsWith('.exe') && !blacklist.includes(focusedProcessName) && !cyclePool.includes(focusedProcessName)) {
-                                    cyclePool.push(focusedProcessName);
+                            try {
+                                const win = await activeWin();
+                                if (win && win.owner) {
+                                    const focusedProcessName = (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase();
+                                    if (focusedProcessName.endsWith('.exe') && !blacklist.includes(focusedProcessName) && !cyclePool.includes(focusedProcessName)) {
+                                        cyclePool.push(focusedProcessName);
+                                    }
                                 }
-                            }
+                            } catch(e) {}
                         }
                         
                         if (cyclePool.length > 0) {
@@ -648,7 +666,7 @@ function connect() {
                             sendToSD({ event: "setSettings", context: context, payload: { assignedApp: nextApp, clickMode: knob.clickMode, knobAction: knob.knobAction, screenAction: knob.screenAction, whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist } });
                             sendToSD({ event: "sendToPropertyInspector", context: context, payload: { assignedApp: nextApp } });
                         }
-                    } catch(e) {}
+                    });
                 }
             }
         }
@@ -667,9 +685,11 @@ setInterval(async () => {
         let focusedPath = null;
 
         if (needsFocusTracking) {
-            const win = activeWin.sync();
-            focusedProcessName = win && win.owner ? (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase() : null;
-            focusedPath = win && win.owner ? win.owner.path : null;
+            try {
+                const win = await activeWin();
+                focusedProcessName = win && win.owner ? (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase() : null;
+                focusedPath = win && win.owner ? win.owner.path : null;
+            } catch(e) {}
         }
         
         volumeCheckCounter++;
@@ -713,25 +733,25 @@ setInterval(async () => {
                 if (!knob.currentActiveProcess || knob.currentActiveProcess.name !== targetProcessName) {
                     // Sincronização imediata ao mudar de janela/aplicativo para feedback visual instantâneo!
                     knob.currentActiveProcess = { name: targetProcessName, path: targetPath };
-                    let volInfo = getVolume(targetProcessName);
+                    let volInfo = await getVolumeAsync(targetProcessName);
                     knob.currentActiveVolume = volInfo.volume;
                     knob.currentMuted = volInfo.muted;
-                    updateButton(context, targetProcessName, volInfo, targetPath);
+                    await updateButton(context, targetProcessName, volInfo, targetPath);
                 } else {
                     // Sincronização inteligente de volume/mudo passiva apenas se o app não mudou e no ciclo correto (a cada 2s)
                     if (!knob.isSettingVolume && knob.pendingVolume === null && shouldSyncVolume) {
-                        let volInfo = getVolume(targetProcessName);
+                        let volInfo = await getVolumeAsync(targetProcessName);
                         if (volInfo.volume >= 0 && (volInfo.volume !== knob.currentActiveVolume || volInfo.muted !== knob.currentMuted)) {
                             knob.currentActiveVolume = volInfo.volume;
                             knob.currentMuted = volInfo.muted;
-                            updateButton(context, targetProcessName, volInfo, targetPath);
+                            await updateButton(context, targetProcessName, volInfo, targetPath);
                         }
                     }
                 }
             } else {
                 if (knob.currentActiveProcess) {
                      knob.currentActiveProcess = null;
-                     updateButton(context, "", -1, null);
+                     await updateButton(context, "", -1, null);
                 }
             }
         }
