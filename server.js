@@ -178,7 +178,8 @@ function applyVolume(context) {
 
 // Extrair icone usando powershell com cache
 function getIconBase64(exePath) {
-    if (iconCache[exePath]) return iconCache[exePath];
+    if (!exePath) return null;
+    if (iconCache[exePath] !== undefined) return iconCache[exePath];
     try {
         const base64Data = execSync(`"${VOL_CTRL_CMD}" icon "${exePath}"`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
         if (base64Data && base64Data.startsWith("data:image/png;base64,")) {
@@ -186,6 +187,7 @@ function getIconBase64(exePath) {
             return base64Data;
         }
     } catch (e) {}
+    iconCache[exePath] = null; // Cache null on failure to prevent calling execSync repeatedly
     return null;
 }
 
@@ -197,96 +199,100 @@ function sendToSD(payload) {
 
 function updateButton(context, processName, volumeInfo, exePath) {
     if (!context) return;
+    const knob = activeKnobs[context];
+    if (!knob) return;
     
     if (!processName) {
-        sendToSD({ event: "setTitle", context: context, payload: { title: "", target: 0 } });
-        sendToSD({ event: "setFeedback", context: context, payload: { title: "No App", value: "", indicator: 0, icon: "" } });
+        if (knob.lastProcessName !== "") {
+            knob.lastProcessName = "";
+            knob.lastTitle = "";
+            knob.lastImage = "";
+            knob.lastFeedbackValue = "";
+            knob.lastIndicator = 0;
+            sendToSD({ event: "setTitle", context: context, payload: { title: "", target: 0 } });
+            sendToSD({ event: "setFeedback", context: context, payload: { title: "No App", value: "", indicator: 0, icon: "" } });
+        }
         return;
     }
 
-    let image = null;
-    let prof = profiles[processName] || profiles[processName.endsWith('.exe') ? processName.replace('.exe', '') : processName + '.exe'];
-    
-    if (prof && prof.image) {
-        image = prof.image;
-        if (!image.startsWith("data:")) {
-            // Read local file and convert to base64
-            try {
-                const ext = path.extname(image).toLowerCase();
-                const mime = ext === '.gif' ? 'image/gif' : 'image/png';
-                const fileData = fs.readFileSync(path.join(__dirname, image));
-                image = `data:${mime};base64,` + fileData.toString('base64');
-            } catch (e) {
-                console.error("Erro lendo imagem customizada:", e);
-            }
-        }
-    } else {
-        if (!exePath) {
-            exePath = getPathFromProcessName(processName);
-        }
-        if (exePath) {
-            image = getIconBase64(exePath);
-        }
-    }
-
-    let knob = activeKnobs[context];
-    let imageChanged = false;
     let volume = volumeInfo && typeof volumeInfo === 'object' && volumeInfo.volume !== undefined ? volumeInfo.volume : volumeInfo;
     let muted = volumeInfo && typeof volumeInfo === 'object' && volumeInfo.muted !== undefined ? volumeInfo.muted : false;
 
-    let displayVol = volume >= 0 ? volume.toString() : "--";
+    let displayVol = muted ? "--" : (volume >= 0 ? volume.toString() : "--");
 
-    if (image && muted) {
-        let muteIcon = profiles.muteIcon || "";
-        if (!muteIcon) {
-            displayVol = "--";
-        } else {
-            let overlaySvg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="144" height="144">
-                <image xlink:href="${image}" x="0" y="0" width="144" height="144"/>
-                <image xlink:href="${muteIcon}" x="0" y="0" width="144" height="144"/>
-            </svg>`;
-            image = "data:image/svg+xml;base64," + Buffer.from(overlaySvg).toString('base64');
-        }
-    }
-
-    if (image) {
-        if (!knob || knob.lastImage !== image) {
-            imageChanged = true;
-            if (knob) knob.lastImage = image;
-            sendToSD({
-                event: "setImage",
-                context: context,
-                payload: {
-                    image: image,
-                    target: 0
+    let image = null;
+    if (muted && profiles.muteIcon) {
+        image = profiles.muteIcon;
+    } else {
+        let prof = profiles[processName] || profiles[processName.endsWith('.exe') ? processName.replace('.exe', '') : processName + '.exe'];
+        if (prof && prof.image) {
+            image = prof.image;
+            if (!image.startsWith("data:")) {
+                try {
+                    const ext = path.extname(image).toLowerCase();
+                    const mime = ext === '.gif' ? 'image/gif' : 'image/png';
+                    const fileData = fs.readFileSync(path.join(__dirname, image));
+                    image = `data:${mime};base64,` + fileData.toString('base64');
+                } catch (e) {
+                    console.error("Erro lendo imagem customizada:", e);
                 }
-            });
+            }
+        } else {
+            if (!exePath) {
+                exePath = getPathFromProcessName(processName);
+            }
+            if (exePath) {
+                image = getIconBase64(exePath);
+            }
         }
     }
 
-    sendToSD({
-        event: "setTitle",
-        context: context,
-        payload: {
-            title: displayVol,
-            target: 0
-        }
-    });
-
-    let feedbackPayload = {
-        title: processName,
-        value: displayVol,
-        indicator: volume >= 0 ? volume : 0
-    };
-    if (imageChanged) {
-        feedbackPayload.icon = image;
+    let imageChanged = false;
+    if (image && knob.lastImage !== image) {
+        imageChanged = true;
+        knob.lastImage = image;
+        sendToSD({
+            event: "setImage",
+            context: context,
+            payload: {
+                image: image,
+                target: 0
+            }
+        });
     }
 
-    sendToSD({
-        event: "setFeedback",
-        context: context,
-        payload: feedbackPayload
-    });
+    if (knob.lastTitle !== displayVol) {
+        knob.lastTitle = displayVol;
+        sendToSD({
+            event: "setTitle",
+            context: context,
+            payload: {
+                title: displayVol,
+                target: 0
+            }
+        });
+    }
+
+    let indicatorVal = volume >= 0 ? volume : 0;
+    if (knob.lastProcessName !== processName || knob.lastFeedbackValue !== displayVol || knob.lastIndicator !== indicatorVal || imageChanged) {
+        knob.lastProcessName = processName;
+        knob.lastFeedbackValue = displayVol;
+        knob.lastIndicator = indicatorVal;
+
+        let feedbackPayload = {
+            title: processName,
+            value: displayVol,
+            indicator: indicatorVal
+        };
+        if (image) {
+            feedbackPayload.icon = image;
+        }
+        sendToSD({
+            event: "setFeedback",
+            context: context,
+            payload: feedbackPayload
+        });
+    }
 }
 
 function connect() {
@@ -335,7 +341,12 @@ function connect() {
                 currentActiveVolume: -1,
                 currentMuted: false,
                 isSettingVolume: false,
-                pendingVolume: null
+                pendingVolume: null,
+                lastImage: null,
+                lastTitle: null,
+                lastProcessName: null,
+                lastFeedbackValue: null,
+                lastIndicator: null
             };
             if (settings.whitelist && Array.isArray(settings.whitelist)) {
                 whitelist = settings.whitelist;
@@ -606,16 +617,24 @@ function connect() {
 // Background loop para checar foco da janela e sincronizar volume de forma eficiente
 let volumeCheckCounter = 0;
 setInterval(async () => {
-    if (Object.keys(activeKnobs).length === 0) return;
+    const knobContexts = Object.keys(activeKnobs);
+    if (knobContexts.length === 0) return;
+    
     try {
-        const win = activeWin.sync();
-        const focusedProcessName = win && win.owner ? (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase() : null;
-        const focusedPath = win && win.owner ? win.owner.path : null;
+        const needsFocusTracking = knobContexts.some(ctx => !activeKnobs[ctx].assignedApp);
+        let focusedProcessName = null;
+        let focusedPath = null;
+
+        if (needsFocusTracking) {
+            const win = activeWin.sync();
+            focusedProcessName = win && win.owner ? (win.owner.path ? path.basename(win.owner.path) : win.owner.name).toLowerCase() : null;
+            focusedPath = win && win.owner ? win.owner.path : null;
+        }
         
         volumeCheckCounter++;
-        const shouldSyncVolume = (volumeCheckCounter % 4 === 0); // Sincroniza passivamente apenas a cada 4 ciclos (2000ms)
+        const shouldSyncVolume = (volumeCheckCounter % 2 === 0); // Sincroniza passivamente a cada 2 ciclos (2000ms)
         
-        for (const context of Object.keys(activeKnobs)) {
+        for (const context of knobContexts) {
             const knob = activeKnobs[context];
             let targetProcessName = knob.assignedApp;
             let targetPath = null;
@@ -648,7 +667,6 @@ setInterval(async () => {
                     updateButton(context, targetProcessName, volInfo, targetPath);
                 } else {
                     // Sincronização inteligente de volume/mudo passiva apenas se o app não mudou e no ciclo correto (a cada 2s)
-                    // Evita spawnar processos C# constantemente e só executa se o botão não estiver ativamente em uso
                     if (!knob.isSettingVolume && knob.pendingVolume === null && shouldSyncVolume) {
                         let volInfo = getVolume(targetProcessName);
                         if (volInfo.volume >= 0 && (volInfo.volume !== knob.currentActiveVolume || volInfo.muted !== knob.currentMuted)) {
@@ -666,7 +684,7 @@ setInterval(async () => {
             }
         }
     } catch(e) {}
-}, 500);
+}, 1000);
 
 setInterval(() => {
     logDebug("ALIVE");

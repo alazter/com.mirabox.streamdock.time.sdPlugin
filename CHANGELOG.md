@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.1.1] - 2026-07-05
+
+### Fixed / Corrigido
+- **[English]** **Icon Cache Failure Loop Fix:** Cached failed icon extractions (`null`) to eliminate continuous synchronous `execSync` process spawning loops every 500ms for apps without extractable icons.
+- **[Português]** **Eliminação de Loop no Cache de Ícones:** Adicionado cache de falha (`null`) para evitar que a extração de ícones tente re-executar o `VolumeControl.exe` de forma síncrona a cada 500ms em aplicativos sem ícone.
+- **[English]** **Qt Base64 SVG Crash Fix:** Removed nested Base64 SVG image generation on muted state to prevent Qt image rendering crashes in recent Stream Dock updates.
+- **[Português]** **Correção de Crash no Renderizador Qt:** Remoção da geração de SVGs com Base64 aninhado para estados mudos, evitando congelamentos do motor de renderização da Qt nas atualizações recentes do Stream Dock.
+- **[English]** **WebSocket Event Deduplication:** Throttled and deduplicated `setTitle`, `setImage`, and `setFeedback` WebSocket events, sending updates only when values actually change.
+- **[Português]** **Deduplicação de Mensagens WebSocket:** Filtragem e controle de frequência dos eventos `setTitle`, `setImage` e `setFeedback`, reduzindo o tráfego WebSocket e a carga na UI do Stream Dock.
+- **[English]** **Focus Tracking Loop Optimization:** Optimized the background active window polling loop (`activeWin`) to execute only when automatic focus tracking is required, spaced at 1000ms intervals.
+- **[Português]** **Otimização de Checagem de Foco:** O loop de verificação de janela ativa (`activeWin`) agora é executado apenas quando necessário (knobs em modo automático) e espaçado para 1000ms.
+
+---
+
 ## [v0.1.0] - 2026-07-04
 
 ### Added / Adicionado

@@ -5,7 +5,7 @@ This repository contains an independent, custom standalone version of the App Vo
 ## 📦 How to Install and Use
 
 1. Download the packaged plugin installer (`com.alazter.mirabox.volume.SDPlugin`) directly from the releases page:
-   👉 **[Download Latest Release (v0.1.0)](https://github.com/alazter/com.mirabox.streamdock.time.sdPlugin/releases/download/v0.1.0/com.alazter.mirabox.volume.SDPlugin)**
+   👉 **[Download Latest Release (v0.1.1)](https://github.com/alazter/com.mirabox.streamdock.time.sdPlugin/releases/download/v0.1.1/com.alazter.mirabox.volume.SDPlugin)**
 2. **Double-click** the downloaded `.SDPlugin` file.
 3. The Mirabox Stream Dock software will automatically open and install the plugin instantly.
 
@@ -24,7 +24,7 @@ Este repositório contém uma versão independente (standalone) e personalizada 
 ## 📦 Como Instalar e Usar
 
 1. Baixe o instalador oficial do plugin (`com.alazter.mirabox.volume.SDPlugin`) diretamente na página de lançamentos:
-   👉 **[Baixar Versão Recente (v0.1.0)](https://github.com/alazter/com.mirabox.streamdock.time.sdPlugin/releases/download/v0.1.0/com.alazter.mirabox.volume.SDPlugin)**
+   👉 **[Baixar Versão Recente (v0.1.1)](https://github.com/alazter/com.mirabox.streamdock.time.sdPlugin/releases/download/v0.1.1/com.alazter.mirabox.volume.SDPlugin)**
 2. Dê um **clique duplo** no arquivo `.SDPlugin` baixado.
 3. O software do Mirabox Stream Dock abrirá automaticamente e instalará o plugin de forma instantânea.
 
