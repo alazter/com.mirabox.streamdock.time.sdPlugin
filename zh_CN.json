@@ -1,10 +1,10 @@
 {
-    "Name": "App Volume Controller",
-    "Category": "Audio",
+    "Name": "Audio Controller [Alazter]",
+    "Category": "Audio Controller [Alazter]",
     "Description": "Control multiple applications volume with one knob.",
     "com.alazter.audio_controller": {
-        "Name": "App Volume Controller",
-        "Tooltip": "App Volume Controller"
+        "Name": "Audio Controller [Alazter]",
+        "Tooltip": "Audio Controller [Alazter]"
     },
     "Localization": {}
 }

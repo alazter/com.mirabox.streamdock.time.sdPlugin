@@ -1,10 +1,10 @@
 {
-    "Name": "アプリ音量コントローラー",
-    "Category": "オーディオ",
+    "Name": "Audio Controller [Alazter]",
+    "Category": "Audio Controller [Alazter]",
     "Description": "つまみで複数のアプリの音量をコントロールします。",
     "com.alazter.audio_controller": {
-        "Name": "オーディオコントローラー",
-        "Tooltip": "オーディオコントローラー"
+        "Name": "Audio Controller [Alazter]",
+        "Tooltip": "Audio Controller [Alazter]"
     },
     "Localization": {}
 }

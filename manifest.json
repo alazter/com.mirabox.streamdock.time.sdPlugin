@@ -23,16 +23,16 @@
       "Controllers": [
         "Knob"
       ],
-      "Name": "Audio Controller",
-      "Tooltip": "Audio controller",
+      "Name": "Audio Controller [Alazter]",
+      "Tooltip": "Audio Controller [Alazter]",
       "PropertyInspectorPath": "./propertyInspector/custom/index.html"
     }
   ],
-  "Version": "0.2.3",
-  "Name": "App Audio Controller",
+  "Version": "0.2.4",
+  "Name": "Audio Controller [Alazter]",
   "Icon": "static/img/App-logo.png",
   "CategoryIcon": "static/img/App-logo.png",
-  "Category": "Audio",
+  "Category": "Audio Controller [Alazter]",
   "Description": "Control multiple applications volume with one knob.",
   "CodePath": "run.bat",
   "CodePathWin": "run.bat",

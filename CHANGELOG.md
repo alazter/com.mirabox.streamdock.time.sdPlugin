@@ -2,11 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.2.3] - 2026-07-06
+## [v0.2.4] - 2026-07-06
 
 ### Added / Adicionado
 - **[English]** **Audio Controller Namespace Transition:** Renamed the entire plugin and action UUID to `com.alazter.audio_controller.sdPlugin` to establish a clearer name.
 - **[Português]** **Transição para Namespace Audio Controller:** Renomeado todo o plugin e UUID de ação para `com.alazter.audio_controller.sdPlugin` para estabelecer uma identidade de nome mais clara.
+- **[English]** **Plugin Rebranding:** Renamed plugin name, action name, action tooltip, and category in all translations and manifests to `Audio Controller [Alazter]`.
+- **[Português]** **Renomeação do Plugin:** Renomeado o nome do plugin, nome da ação, tooltip de ação e categoria em todas as traduções e manifestos para `Audio Controller [Alazter]`.
 - **[English]** **Settings Auto-Migration Fallback:** Implemented multi-stage automatic migration in the backend server. It now searches for old profiles from both `com.alazter.mirabox.volume.sdPlugin` and the original `com.mirabox.streamdock.time.sdPlugin` directories, preventing loss of settings.
 - **[Português]** **Migração Automática Avançada:** Implementado suporte a migração automática em múltiplos estágios no servidor backend, buscando perfis anteriores nos diretórios `com.alazter.mirabox.volume.sdPlugin` e `com.mirabox.streamdock.time.sdPlugin` para evitar perda de dados.
 
