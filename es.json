@@ -2,7 +2,7 @@
     "Name": "Controlador de Volumen de Apps",
     "Category": "Audio",
     "Description": "Controla el volumen de múltiples aplicaciones con un control giratorio.",
-    "com.alazter.mirabox.volume.controller": {
+    "com.alazter.audio_controller": {
         "Name": "Controlador de Audio",
         "Tooltip": "Controlador de Audio"
     },

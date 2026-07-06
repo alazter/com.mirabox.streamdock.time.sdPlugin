@@ -4,13 +4,13 @@ const { execSync } = require('child_process');
 
 // Ler o arquivo package.json para obter o nome e a versão dinâmica do plugin
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-const PLUGIN_NAME = 'com.alazter.mirabox.volume.sdPlugin'; // Nome do diretório do plugin
+const PLUGIN_NAME = 'com.alazter.audio_controller.sdPlugin'; // Nome do diretório do plugin
 const VERSION = 'v' + packageJson.version; // Ex: v0.1.0
 
-const OUTPUT_FILE_NAME = 'com.alazter.mirabox.volume.SDPlugin';
+const OUTPUT_FILE_NAME = 'com.alazter.audio_controller.SDPlugin';
 const TEMP_DIR = path.join(__dirname, 'temp_build');
 const TARGET_DIR = path.join(TEMP_DIR, PLUGIN_NAME);
-const ZIP_PATH = path.join(__dirname, 'com.alazter.mirabox.volume.zip');
+const ZIP_PATH = path.join(__dirname, 'com.alazter.audio_controller.zip');
 const PACKAGE_PATH = path.join(__dirname, OUTPUT_FILE_NAME);
 
 // Localizar a pasta GitHub subindo os níveis necessários de forma segura

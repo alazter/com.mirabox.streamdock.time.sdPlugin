@@ -1,6 +1,6 @@
 {
-  "name": "com.alazter.mirabox.volume.sdplugin",
-  "version": "0.2.2",
+  "name": "com.alazter.audio_controller.sdplugin",
+  "version": "0.3.0",
   "description": "",
   "main": "interval.js",
   "scripts": {

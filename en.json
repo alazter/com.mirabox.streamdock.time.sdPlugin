@@ -2,7 +2,7 @@
     "Name": "App Volume Controller",
     "Category": "Audio",
     "Description": "Control multiple applications volume with one knob.",
-    "com.alazter.mirabox.volume.controller": {
+    "com.alazter.audio_controller": {
         "Name": "App Volume Controller",
         "Tooltip": "App Volume Controller"
     },

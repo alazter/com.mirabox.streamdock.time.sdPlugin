@@ -2,7 +2,7 @@
     "Name": "アプリ音量コントローラー",
     "Category": "オーディオ",
     "Description": "つまみで複数のアプリの音量をコントロールします。",
-    "com.alazter.mirabox.volume.controller": {
+    "com.alazter.audio_controller": {
         "Name": "オーディオコントローラー",
         "Tooltip": "オーディオコントローラー"
     },

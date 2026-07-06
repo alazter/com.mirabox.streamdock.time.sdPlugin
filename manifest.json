@@ -1,7 +1,7 @@
 {
   "Actions": [
     {
-      "UUID": "com.alazter.mirabox.volume.controller",
+      "UUID": "com.alazter.audio_controller",
       "Icon": "static/img/App-logo.png",
       "state": 0,
       "States": [
@@ -28,8 +28,8 @@
       "PropertyInspectorPath": "./propertyInspector/custom/index.html"
     }
   ],
-  "Version": "0.2.2",
-  "Name": "App Volume Controller",
+  "Version": "0.3.0",
+  "Name": "App Audio Controller",
   "Icon": "static/img/App-logo.png",
   "CategoryIcon": "static/img/App-logo.png",
   "Category": "Audio",

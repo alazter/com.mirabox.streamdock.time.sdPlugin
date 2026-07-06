@@ -67,10 +67,15 @@ function logDebug(msg) {
 
 // Localizar a pasta AppData para armazenar perfis de forma segura e persistente
 const appDataDir = process.env.APPDATA || (process.platform === 'darwin' ? path.join(process.env.HOME, 'Library/Preferences') : path.join(process.env.HOME, '.config'));
-const PLUGIN_DATA_DIR = path.join(appDataDir, 'com.alazter.mirabox.volume.sdPlugin');
+const PLUGIN_DATA_DIR = path.join(appDataDir, 'com.alazter.audio_controller.sdPlugin');
 const PROFILES_PATH = path.join(PLUGIN_DATA_DIR, 'profiles.json');
-const OLD_PLUGIN_DATA_DIR = path.join(appDataDir, 'com.mirabox.streamdock.time.sdPlugin');
-const OLD_PROFILES_PATH = path.join(OLD_PLUGIN_DATA_DIR, 'profiles.json');
+
+// Pastas de versões anteriores para migração automática
+const OLD_VOLUME_DATA_DIR = path.join(appDataDir, 'com.alazter.mirabox.volume.sdPlugin');
+const OLD_VOLUME_PROFILES_PATH = path.join(OLD_VOLUME_DATA_DIR, 'profiles.json');
+const OLD_TIME_DATA_DIR = path.join(appDataDir, 'com.mirabox.streamdock.time.sdPlugin');
+const OLD_TIME_PROFILES_PATH = path.join(OLD_TIME_DATA_DIR, 'profiles.json');
+
 const LOCAL_PROFILES_PATH = path.join(__dirname, 'profiles.json');
 const VOL_CTRL_CMD = path.join(__dirname, 'VolumeControl.exe');
 
@@ -86,13 +91,21 @@ function loadData() {
         if (fs.existsSync(PROFILES_PATH)) {
             rawData = fs.readFileSync(PROFILES_PATH, 'utf8');
             logDebug("Profiles carregados da pasta persistente AppData.");
-        } else if (fs.existsSync(OLD_PROFILES_PATH)) {
-            rawData = fs.readFileSync(OLD_PROFILES_PATH, 'utf8');
+        } else if (fs.existsSync(OLD_VOLUME_PROFILES_PATH)) {
+            rawData = fs.readFileSync(OLD_VOLUME_PROFILES_PATH, 'utf8');
             try {
                 fs.writeFileSync(PROFILES_PATH, rawData, 'utf8');
-                logDebug("Profiles antigos migrados do AppData da Mirabox.");
+                logDebug("Profiles anteriores migrados do AppData (mirabox.volume).");
             } catch (err) {
-                console.error("Erro migrando profiles do AppData antigo:", err);
+                console.error("Erro migrando profiles do AppData do volume:", err);
+            }
+        } else if (fs.existsSync(OLD_TIME_PROFILES_PATH)) {
+            rawData = fs.readFileSync(OLD_TIME_PROFILES_PATH, 'utf8');
+            try {
+                fs.writeFileSync(PROFILES_PATH, rawData, 'utf8');
+                logDebug("Profiles antigos migrados do AppData (streamdock.time).");
+            } catch (err) {
+                console.error("Erro migrando profiles do AppData do relógio:", err);
             }
         } else if (fs.existsSync(LOCAL_PROFILES_PATH)) {
             rawData = fs.readFileSync(LOCAL_PROFILES_PATH, 'utf8');
@@ -100,7 +113,7 @@ function loadData() {
                 fs.writeFileSync(PROFILES_PATH, rawData, 'utf8');
                 logDebug("Profiles locais migrados para a pasta persistente AppData.");
             } catch (err) {
-                console.error("Erro migrando profiles para AppData:", err);
+                console.error("Erro migrando profiles locais para AppData:", err);
             }
         }
         
