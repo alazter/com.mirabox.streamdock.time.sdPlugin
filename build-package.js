@@ -7,7 +7,7 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.jso
 const PLUGIN_NAME = 'com.alazter.audio_controller.sdPlugin'; // Nome do diretório do plugin
 const VERSION = 'v' + packageJson.version; // Ex: v0.1.0
 
-const OUTPUT_FILE_NAME = 'com.alazter.audio_controller.SDPlugin';
+const OUTPUT_FILE_NAME = 'com.alazter.audio_controller.sdPlugin';
 const TEMP_DIR = path.join(__dirname, 'temp_build');
 const TARGET_DIR = path.join(TEMP_DIR, PLUGIN_NAME);
 const ZIP_PATH = path.join(__dirname, 'com.alazter.audio_controller.zip');
@@ -69,7 +69,7 @@ for (const entry of ALLOWED_ENTRIES) {
             recursive: true,
             filter: (src) => {
                 const basename = path.basename(src);
-                if (basename.endsWith('.log') || basename.endsWith('.bak') || basename.endsWith('.backup')) {
+                if (basename.endsWith('.log') || basename.endsWith('.bak') || basename.endsWith('.backup') || basename.endsWith('.sdPlugin') || basename.endsWith('.SDPlugin')) {
                     return false;
                 }
                 return true;
@@ -93,6 +93,12 @@ try {
     fs.mkdirSync(RELEASES_DIR, { recursive: true });
     fs.copyFileSync(PACKAGE_PATH, FINAL_RELEASE_PATH);
     console.log(`✅ Lançamento local organizado e copiado com sucesso para: ${FINAL_RELEASE_PATH}`);
+    
+    // ---- COPIAR PARA A PASTA DE ASSETS DO REPOSITÓRIO ----
+    console.log(`📂 Copiando para a pasta assets local do repositório...`);
+    const LOCAL_ASSETS_PATH = path.join(__dirname, 'assets', OUTPUT_FILE_NAME);
+    fs.copyFileSync(PACKAGE_PATH, LOCAL_ASSETS_PATH);
+    console.log(`✅ Copiado com sucesso para assets: ${LOCAL_ASSETS_PATH}`);
     
 } catch (error) {
     console.error("❌ Erro ao compactar/organizar arquivos:", error);
