@@ -18,7 +18,7 @@ let parentDir = path.join(__dirname, '..');
 if (path.basename(parentDir).toLowerCase() === 'projetos') {
     parentDir = path.join(parentDir, '..'); // Sobe mais um nível se estiver dentro de 'Projetos'
 }
-const RELEASES_DIR = path.join(parentDir, 'Realeses', PLUGIN_NAME, VERSION);
+const RELEASES_DIR = path.join(parentDir, 'Releases', PLUGIN_NAME, VERSION);
 const FINAL_RELEASE_PATH = path.join(RELEASES_DIR, OUTPUT_FILE_NAME);
 
 console.log(`🚀 Iniciando empacotamento do plugin (${VERSION})...`);
