@@ -5,7 +5,7 @@ This repository contains an independent, custom standalone version of the App Au
 ## 📦 How to Install and Use
 
 1. Download the packaged plugin installer (`com.alazter.audio_controller.SDPlugin`) directly from the releases page:
-   👉 **[Download Latest Release (v0.3.0)](https://github.com/alazter/com.alazter.audio_controller.sdPlugin/releases/download/v0.3.0/com.alazter.audio_controller.SDPlugin)**
+   👉 **[Download Latest Release (v0.2.3)](https://github.com/alazter/com.alazter.audio_controller.sdPlugin/releases/download/v0.2.3/com.alazter.audio_controller.SDPlugin)**
 2. **Double-click** the downloaded `.SDPlugin` file.
 3. The Mirabox Stream Dock software will automatically open and install the plugin instantly.
 
@@ -24,7 +24,7 @@ Este repositório contém uma versão independente (standalone) e personalizada 
 ## 📦 Como Instalar e Usar
 
 1. Baixe o instalador oficial do plugin (`com.alazter.audio_controller.SDPlugin`) diretamente na página de lançamentos:
-   👉 **[Baixar Versão Recente (v0.3.0)](https://github.com/alazter/com.alazter.audio_controller.sdPlugin/releases/download/v0.3.0/com.alazter.audio_controller.SDPlugin)**
+   👉 **[Baixar Versão Recente (v0.2.3)](https://github.com/alazter/com.alazter.audio_controller.sdPlugin/releases/download/v0.2.3/com.alazter.audio_controller.SDPlugin)**
 2. Dê um **clique duplo** no arquivo `.SDPlugin` baixado.
 3. O software do Mirabox Stream Dock abrirá automaticamente e instalará o plugin de forma instantânea.
 

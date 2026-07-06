@@ -28,7 +28,7 @@
       "PropertyInspectorPath": "./propertyInspector/custom/index.html"
     }
   ],
-  "Version": "0.3.0",
+  "Version": "0.2.3",
   "Name": "App Audio Controller",
   "Icon": "static/img/App-logo.png",
   "CategoryIcon": "static/img/App-logo.png",

@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.3.0] - 2026-07-06
+## [v0.2.3] - 2026-07-06
 
 ### Added / Adicionado
 - **[English]** **Audio Controller Namespace Transition:** Renamed the entire plugin and action UUID to `com.alazter.audio_controller.sdPlugin` to establish a clearer name.
