@@ -450,26 +450,40 @@ function renderKnobConfig() {
     let currentPool = [];
     if (clickMode === "games") {
         currentPool = $settings?.gamesWhitelist || [];
+        const optAuto = document.createElement("option");
+        optAuto.value = "auto";
+        optAuto.textContent = "⚙️ Automatic (Auto Focus)";
+        knobMode.appendChild(optAuto);
     } else {
         currentPool = $settings?.whitelist || [];
+        const optEmpty = document.createElement("option");
+        optEmpty.value = "";
+        optEmpty.textContent = "🔍 Automatic (Active Window)";
+        knobMode.appendChild(optEmpty);
     }
     
-    if (currentPool.length > 0) {
-        currentPool.forEach(app => {
-            const opt = document.createElement("option");
-            opt.value = app;
-            opt.textContent = app;
-            knobMode.appendChild(opt);
-        });
-        
-        if ($settings.assignedApp && !currentPool.includes($settings.assignedApp)) {
-            const opt = document.createElement("option");
-            opt.value = $settings.assignedApp;
-            opt.textContent = `🔄 ${$settings.assignedApp}`;
-            knobMode.appendChild(opt);
-        }
-        knobMode.value = $settings.assignedApp;
+    currentPool.forEach(app => {
+        const opt = document.createElement("option");
+        opt.value = app;
+        opt.textContent = app;
+        knobMode.appendChild(opt);
+    });
+    
+    let activeApp = $settings.assignedApp || "";
+    if (clickMode === "games" && !activeApp) {
+        activeApp = "auto";
     }
+    if (clickMode === "whitelist" && activeApp === "auto") {
+        activeApp = "";
+    }
+    
+    if (activeApp && activeApp !== "auto" && !currentPool.includes(activeApp)) {
+        const opt = document.createElement("option");
+        opt.value = activeApp;
+        opt.textContent = `🔄 ${activeApp}`;
+        knobMode.appendChild(opt);
+    }
+    knobMode.value = activeApp;
     
     const radio = document.querySelector(`input[name="clickMode"][value="${clickMode}"]`);
     if (radio) radio.checked = true;

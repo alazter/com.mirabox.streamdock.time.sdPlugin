@@ -28,7 +28,7 @@
       "PropertyInspectorPath": "./propertyInspector/custom/index.html"
     }
   ],
-  "Version": "0.3.4",
+  "Version": "0.3.5",
   "Name": "Audio Controller [Alazter]",
   "Icon": "static/img/App-logo.png",
   "CategoryIcon": "static/img/App-logo.png",

@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.5] - 2026-07-13
+
+### Added / Adicionado
+- **[English]** **Foreground Game Priority:** In Games Whitelist autofocus mode, the game focused in first-person (active window) now has maximum priority over background games (such as `taskbarhero.exe`).
+- **[Português]** **Priorização de Jogo em Primeiro Plano:** No autofoco da Games Whitelist, o jogo focado na tela (janela ativa) agora possui prioridade máxima sobre jogos rodando em segundo plano (como `taskbarhero.exe`).
+- **[English]** **Temporary Focus with Auto-Return Timeout:** Cycling to an app in Games Whitelist mode now holds focus temporarily for 60 seconds (renewed on every interaction/rotation). It then automatically returns to the active foreground game.
+- **[Português]** **Foco Temporário com Retorno Automático:** Ao alternar (ciclar) para outro jogo da Games Whitelist pelo knob físico/tela, o foco fica fixo por 1 minuto (renovado a cada giro/clique). Após 1 minuto de inatividade, o foco retorna de forma automática para o jogo em primeiro plano.
+- **[English]** **Automatic Option in selector:** Added "Automatic (Auto Focus)" to the Controlling App dropdown in Property Inspector for Games Whitelist mode.
+- **[Português]** **Opção Automática no Seletor:** Adicionada a opção "Automatic (Auto Focus)" no menu de seleção de aplicativos no computador para a Games Whitelist.
+
+### Fixed / Corrigido
+- **[English]** **Disabled Debug Logging:** Deactivated debug log file writing (`plugin_debug.log`) in the plugin folder to avoid unnecessary SSD/NVMe read/write cycles.
+- **[Português]** **Desativação de Logs de Depuração:** Desativada a gravação de arquivos de log local (`plugin_debug.log`) para economizar ciclos de leitura/escrita e proteger o SSD/NVMe.
+
+---
+
 ## [v0.3.4] - 2026-07-13
 
 ### Fixed / Corrigido

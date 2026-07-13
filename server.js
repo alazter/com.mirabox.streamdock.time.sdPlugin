@@ -133,9 +133,7 @@ async function getPathFromProcessNameAsync(processName) {
 }
 
 function logDebug(msg) {
-    try {
-        fs.appendFileSync(path.join(__dirname, 'plugin_debug.log'), msg + '\n');
-    } catch(e) {}
+    // Logging desativado
 }
 
 // Localizar a pasta AppData para armazenar perfis de forma segura e persistente
@@ -689,6 +687,9 @@ function connect() {
             const ticks = msg.payload.ticks || 0;
             const knob = activeKnobs[context];
             if (knob && ticks !== 0 && knob.currentActiveProcess) {
+                if (knob.temporaryFocusUntil) {
+                    knob.temporaryFocusUntil = Date.now() + 60000;
+                }
                 if (knob.clickMode === "whitelist" && !whitelist.includes(knob.currentActiveProcess.name)) return;
                 if (knob.clickMode === "games" && !gamesWhitelist.includes(knob.currentActiveProcess.name)) return;
                 let currentVol = knob.currentActiveVolume;
@@ -709,6 +710,9 @@ function connect() {
         if (event === "dialDown" || event === "touchTap" || event === "keyUp" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown") {
             const knob = activeKnobs[context];
             if (knob) {
+                if (knob.temporaryFocusUntil) {
+                    knob.temporaryFocusUntil = Date.now() + 60000;
+                }
                 let isTouch = (event === "touchTap") || (msg.payload && msg.payload.tapPos !== undefined);
                 let isKnobPress = !isTouch && (event === "dialDown" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown");
                 let action = isKnobPress ? knob.knobAction : knob.screenAction;
@@ -740,8 +744,12 @@ function connect() {
                             cyclePool = processList.filter(p => whitelist.includes(p) && !blacklist.includes(p));
                             if (cyclePool.length === 0) cyclePool = whitelist.filter(p => !blacklist.includes(p));
                         } else if (knob.clickMode === "games") {
-                            cyclePool = processList.filter(p => gamesWhitelist.includes(p) && !blacklist.includes(p));
-                            if (cyclePool.length === 0) cyclePool = gamesWhitelist.filter(p => !blacklist.includes(p));
+                            const activeGames = processList.filter(p => gamesWhitelist.includes(p) && !blacklist.includes(p));
+                            const poolBase = activeGames.length > 0 ? activeGames : gamesWhitelist.filter(p => !blacklist.includes(p));
+                            cyclePool = ["auto"];
+                            for (const game of poolBase) {
+                                if (!cyclePool.includes(game)) cyclePool.push(game);
+                            }
                         } else {
                             cyclePool = processList.filter(p => !blacklist.includes(p));
                             try {
@@ -757,11 +765,19 @@ function connect() {
                         
                         if (cyclePool.length > 0) {
                             let currentIndex = knob.currentActiveProcess ? cyclePool.indexOf(knob.currentActiveProcess.name) : -1;
+                            if (currentIndex === -1 && knob.assignedApp === "auto") {
+                                currentIndex = 0;
+                            }
                             let nextIndex = (currentIndex + 1) % cyclePool.length;
                             let nextApp = cyclePool[nextIndex];
                             
                             knob.assignedApp = nextApp;
                             knob.currentActiveProcess = null; // force update
+                            if (knob.clickMode === "games" && nextApp !== "auto") {
+                                knob.temporaryFocusUntil = Date.now() + 60000; // 1 minuto
+                            } else {
+                                knob.temporaryFocusUntil = null;
+                            }
                             
                             sendToSD({ event: "setSettings", context: context, payload: { assignedApp: nextApp, clickMode: knob.clickMode, knobAction: knob.knobAction, screenAction: knob.screenAction, whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist } });
                             sendToSD({ event: "sendToPropertyInspector", context: context, payload: { assignedApp: nextApp } });
@@ -813,6 +829,18 @@ setInterval(async () => {
         
         for (const context of knobContexts) {
             const knob = activeKnobs[context];
+            
+            if (knob.clickMode === "games" && knob.assignedApp && knob.assignedApp !== "auto" && knob.temporaryFocusUntil) {
+                if (Date.now() > knob.temporaryFocusUntil) {
+                    knob.temporaryFocusUntil = null;
+                    knob.assignedApp = "auto";
+                    knob.currentActiveProcess = null;
+                    
+                    sendToSD({ event: "setSettings", context: context, payload: { assignedApp: "auto", clickMode: knob.clickMode, knobAction: knob.knobAction, screenAction: knob.screenAction, whitelist: whitelist, gamesWhitelist: gamesWhitelist, blacklist: blacklist } });
+                    sendToSD({ event: "sendToPropertyInspector", context: context, payload: { assignedApp: "auto" } });
+                }
+            }
+            
             let targetProcessName = knob.assignedApp;
             let targetPath = null;
             
@@ -820,36 +848,60 @@ setInterval(async () => {
                 targetProcessName = "";
             }
             
-            if (!targetProcessName) {
+            let isAutoMode = !targetProcessName || targetProcessName === "auto";
+            
+            if (isAutoMode) {
                 let targetList = [];
                 if (knob.clickMode === "games") targetList = gamesWhitelist;
                 else if (knob.clickMode === "whitelist") targetList = whitelist;
 
-                // DETECÇÃO INTELIGENTE DE JOGOS (v0.3.0):
-                // Se o modo for "games" ou "all", e houver algum jogo da wishlist rodando no sistema,
-                // nós o priorizamos automaticamente sobre o foco da janela ativa ou qualquer outro app!
-                let activeGameFromWhitelist = null;
-                if (knob.clickMode === "games" || knob.clickMode === "all") {
-                    activeGameFromWhitelist = activeAudioProcesses.find(p => gamesWhitelist.includes(p) && !blacklist.includes(p));
-                }
-
-                if (activeGameFromWhitelist) {
-                    targetProcessName = activeGameFromWhitelist;
-                } else if (knob.clickMode === "all") {
-                    if (focusedProcessName && !blacklist.includes(focusedProcessName)) {
+                if (knob.clickMode === "games") {
+                    // DETECÇÃO INTELIGENTE DE JOGOS (v0.3.5)
+                    // 1ª Prioridade: Se o jogo em primeiro plano (janela focada) está na gamesWhitelist
+                    if (focusedProcessName && gamesWhitelist.includes(focusedProcessName) && !blacklist.includes(focusedProcessName)) {
                         targetProcessName = focusedProcessName;
                         targetPath = focusedPath;
+                    } else {
+                        // 2ª Prioridade: Qualquer jogo da gamesWhitelist com áudio ativo em background (ex: taskbarhero)
+                        let activeGameInBg = activeAudioProcesses.find(p => gamesWhitelist.includes(p) && !blacklist.includes(p));
+                        if (activeGameInBg) {
+                            targetProcessName = activeGameInBg;
+                        } else {
+                            // 3ª Prioridade: Manter o último jogo ativo se ele ainda for válido
+                            if (knob.currentActiveProcess && gamesWhitelist.includes(knob.currentActiveProcess.name) && !blacklist.includes(knob.currentActiveProcess.name)) {
+                                targetProcessName = knob.currentActiveProcess.name;
+                                targetPath = knob.currentActiveProcess.path;
+                            } else {
+                                targetProcessName = "";
+                            }
+                        }
+                    }
+                } else if (knob.clickMode === "all") {
+                    // Modo All Apps (foco automático na janela ativa, mas prioriza jogos em background se houver)
+                    let activeGameInBg = activeAudioProcesses.find(p => gamesWhitelist.includes(p) && !blacklist.includes(p));
+                    if (activeGameInBg) {
+                        targetProcessName = activeGameInBg;
+                    } else if (focusedProcessName && !blacklist.includes(focusedProcessName)) {
+                        targetProcessName = focusedProcessName;
+                        targetPath = focusedPath;
+                    } else {
+                        targetProcessName = "";
                     }
                 } else {
-                    if (focusedProcessName && targetList.includes(focusedProcessName) && !blacklist.includes(focusedProcessName)) {
+                    // Modo Software Whitelist (clickMode === "whitelist")
+                    // Rastreia apenas foco de primeiro plano
+                    if (focusedProcessName && whitelist.includes(focusedProcessName) && !blacklist.includes(focusedProcessName)) {
                         targetProcessName = focusedProcessName;
                         targetPath = focusedPath;
-                    } else if (knob.currentActiveProcess && targetList.includes(knob.currentActiveProcess.name) && !blacklist.includes(knob.currentActiveProcess.name)) {
+                    } else if (knob.currentActiveProcess && whitelist.includes(knob.currentActiveProcess.name) && !blacklist.includes(knob.currentActiveProcess.name)) {
                         targetProcessName = knob.currentActiveProcess.name;
                         targetPath = knob.currentActiveProcess.path;
+                    } else {
+                        targetProcessName = "";
                     }
                 }
             } else {
+                // Modo Foco Fixo (assignedApp fixo)
                 if (knob.currentActiveProcess && knob.currentActiveProcess.name === targetProcessName) {
                     targetPath = knob.currentActiveProcess.path;
                 }
