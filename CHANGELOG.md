@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.3] - 2026-07-13
+
+### Changed / Alterado
+- **[English]** **Controller declaration change:** Updated plugin controllers declaration in `manifest.json` from `Knob` to `Encoder`. This triggers the full Elgato Stream Deck API compatibility layer on the Mirabox Stream Dock software, enabling isolated events (`touchTap` and separate clicks).
+- **[Português]** **Alteração de Declaração do Controlador:** Alterada a declaração de controladores no `manifest.json` de `Knob` para `Encoder`. Isso ativa a camada completa de compatibilidade com a API da Elgato no software da Mirabox, ativando eventos isolados de toque e cliques.
+
+---
+
 ## [v0.3.2] - 2026-07-13
 
 ### Fixed / Corrigido
