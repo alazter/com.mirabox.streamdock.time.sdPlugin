@@ -3,6 +3,24 @@ using System.Runtime.InteropServices;
 
 public class VolumeControl
 {
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool QueryFullProcessImageName(IntPtr hProcess, int dwFlags, System.Text.StringBuilder lpExeName, ref int lpdwSize);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr hObject);
+
+    private static string currentCorrelationId = "";
+
+    private static void SendOutput(object value)
+    {
+        string prefix = string.IsNullOrEmpty(currentCorrelationId) ? "" : currentCorrelationId + "|";
+        Console.WriteLine(prefix + (value != null ? value.ToString() : ""));
+    }
+
     [ComImport, Guid("bcde0395-e52f-467c-8e3d-c4579291692e")]
     private class MMDeviceEnumerator { }
 
@@ -60,6 +78,36 @@ public class VolumeControl
         [PreserveSig] int GetMute(out int pbMute);
     }
 
+    private static string GetProcessPathSafe(System.Diagnostics.Process proc)
+    {
+        try
+        {
+            return proc.MainModule.FileName;
+        }
+        catch
+        {
+            // Fallback usando QueryFullProcessImageName para quando MainModule falhar com Acesso Negado (UWP/Admin)
+            IntPtr hProcess = OpenProcess(0x1000, false, proc.Id); // PROCESS_QUERY_LIMITED_INFORMATION
+            if (hProcess != IntPtr.Zero)
+            {
+                try
+                {
+                    int size = 1024;
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder(size);
+                    if (QueryFullProcessImageName(hProcess, 0, sb, ref size))
+                    {
+                        return sb.ToString();
+                    }
+                }
+                finally
+                {
+                    CloseHandle(hProcess);
+                }
+            }
+        }
+        return null;
+    }
+
     private static string GetProcessPathByName(string processName)
     {
         if (processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -75,7 +123,7 @@ public class VolumeControl
                 {
                     try
                     {
-                        string path = proc.MainModule.FileName;
+                        string path = GetProcessPathSafe(proc);
                         if (!string.IsNullOrEmpty(path)) return path;
                     }
                     catch {}
@@ -129,14 +177,25 @@ public class VolumeControl
                 }
                 if (string.IsNullOrEmpty(line)) continue;
                 
+                string correlationId = "";
+                string actualCommand = line;
+                int pipeIndex = line.IndexOf('|');
+                if (pipeIndex != -1)
+                {
+                    correlationId = line.Substring(0, pipeIndex).Trim();
+                    actualCommand = line.Substring(pipeIndex + 1).Trim();
+                }
+
+                currentCorrelationId = correlationId;
+                
                 try
                 {
-                    string[] parts = ParseCommandLine(line);
+                    string[] parts = ParseCommandLine(actualCommand);
                     ExecuteCommand(parts);
                 }
                 catch
                 {
-                    Console.WriteLine("-1");
+                    SendOutput("-1");
                 }
             }
             return;
@@ -147,21 +206,21 @@ public class VolumeControl
 
     private static void ExecuteCommand(string[] args)
     {
-        if (args.Length == 0) { Console.WriteLine("-1"); return; }
+        if (args.Length == 0) { SendOutput("-1"); return; }
 
         string cmd = args[0].ToLower();
         if (cmd == "path")
         {
-            if (args.Length < 2) { Console.WriteLine(""); return; }
+            if (args.Length < 2) { SendOutput(""); return; }
             string targetName = args[1];
             string path = GetProcessPathByName(targetName);
-            Console.WriteLine(path ?? "");
+            SendOutput(path ?? "");
             return;
         }
 
         if (cmd == "icon")
         {
-            if (args.Length < 2) { Console.WriteLine(""); return; }
+            if (args.Length < 2) { SendOutput(""); return; }
             string target = args[1];
             string exePath = target;
             if (!System.IO.File.Exists(target))
@@ -195,7 +254,7 @@ public class VolumeControl
                                 {
                                     bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
                                     byte[] bytes = ms.ToArray();
-                                    Console.WriteLine("data:image/png;base64," + Convert.ToBase64String(bytes));
+                                    SendOutput("data:image/png;base64," + Convert.ToBase64String(bytes));
                                     return;
                                 }
                             }
@@ -204,7 +263,7 @@ public class VolumeControl
                 }
                 catch {}
             }
-            Console.WriteLine("");
+            SendOutput("");
             return;
         }
 
@@ -284,7 +343,7 @@ public class VolumeControl
                     }
                     catch { }
                 }
-                Console.WriteLine(string.Join(",", procNames));
+                SendOutput(string.Join(",", procNames));
                 return;
             }
 
@@ -359,16 +418,16 @@ public class VolumeControl
                         simpleVol.GetMasterVolume(out curVol);
                         int finalMute;
                         simpleVol.GetMute(out finalMute);
-                        Console.WriteLine(Math.Round(curVol * 100) + "|" + finalMute);
+                        SendOutput(Math.Round(curVol * 100) + "|" + finalMute);
                         return;
                     }
                 }
             }
-            Console.WriteLine("-1");
+            SendOutput("-1");
         }
         catch
         {
-            Console.WriteLine("-1"); // Error case
+            SendOutput("-1"); // Error case
         }
     }
 }

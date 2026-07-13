@@ -44,7 +44,8 @@ class VolumeControlIPC {
     constructor(cmdPath) {
         this.cmdPath = cmdPath;
         this.process = null;
-        this.pendingRequests = [];
+        this.requestId = 0;
+        this.pendingRequests = new Map();
         this.stdoutBuffer = "";
         this.init();
     }
@@ -59,19 +60,31 @@ class VolumeControlIPC {
                 const line = this.stdoutBuffer.substring(0, newlineIdx).trim();
                 this.stdoutBuffer = this.stdoutBuffer.substring(newlineIdx + 1);
                 
-                if (this.pendingRequests.length > 0) {
-                    const resolve = this.pendingRequests.shift();
-                    resolve(line);
+                let correlationId = null;
+                let responseData = line;
+                const pipeIndex = line.indexOf('|');
+                if (pipeIndex !== -1) {
+                    correlationId = line.substring(0, pipeIndex).trim();
+                    responseData = line.substring(pipeIndex + 1).trim();
+                }
+                
+                if (correlationId !== null) {
+                    const reqId = parseInt(correlationId, 10);
+                    if (this.pendingRequests.has(reqId)) {
+                        const resolve = this.pendingRequests.get(reqId);
+                        this.pendingRequests.delete(reqId);
+                        resolve(responseData);
+                    }
                 }
             }
         });
 
         this.process.on('close', (code) => {
             this.process = null;
-            while (this.pendingRequests.length > 0) {
-                const resolve = this.pendingRequests.shift();
+            for (const [reqId, resolve] of this.pendingRequests.entries()) {
                 resolve("-1");
             }
+            this.pendingRequests.clear();
             this.stdoutBuffer = "";
             setTimeout(() => this.init(), 1000);
         });
@@ -86,8 +99,19 @@ class VolumeControlIPC {
             if (!this.process) {
                 return resolve("-1");
             }
-            this.pendingRequests.push(resolve);
-            this.process.stdin.write(cmd + '\n');
+            this.requestId++;
+            const id = this.requestId;
+            this.pendingRequests.set(id, resolve);
+            this.process.stdin.write(`${id}|${cmd}\n`);
+            
+            // Timeout de segurança de 5 segundos para limpar a promessa se o C# travar
+            setTimeout(() => {
+                if (this.pendingRequests.has(id)) {
+                    const res = this.pendingRequests.get(id);
+                    this.pendingRequests.delete(id);
+                    res("-1");
+                }
+            }, 5000);
         });
     }
 }
@@ -761,6 +785,13 @@ setInterval(async () => {
                 activeAudioProcesses = listStdout.trim().split(',').map(p => p.toLowerCase());
             }
         } catch(e) {}
+
+        // Invalidação dinâmica de cache de caminhos não encontrados (v0.3.1)
+        for (const proc of activeAudioProcesses) {
+            if (processPathCache[proc] === 'NOT_FOUND') {
+                delete processPathCache[proc];
+            }
+        }
 
         const needsFocusTracking = knobContexts.some(ctx => !activeKnobs[ctx].assignedApp);
         let focusedProcessName = null;

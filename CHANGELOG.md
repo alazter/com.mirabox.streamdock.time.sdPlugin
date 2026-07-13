@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.1] - 2026-07-13
+
+### Fixed / Corrigido
+- **[English]** **IPC Correlation ID Sychronization:** Upgraded Node.js <-> C# communication with transactional Correlation IDs (`id|payload`). This eliminates all possibilities of command/response misalignment, resolving the "swapped app icons/controls" bug.
+- **[Português]** **Sincronização IPC com Correlation IDs:** Atualizado canal de comunicação entre Node.js e C# com IDs de correlação transacionais (`id|payload`), eliminando desalinhamento de comandos e resolvendo a exibição de ícones e controles trocados.
+- **[English]** **Dynamic Path Cache Invalidation:** Implemented dynamic cache invalidation for closed applications. Once an application is opened and registered in the system audio sessions, its `'NOT_FOUND'` cache entry is invalidated, loading its icon instantly.
+- **[Português]** **Invalidação Dinâmica de Cache de Caminhos:** Corrigido problema onde ícones nativos não carregavam se a aplicação fosse aberta após a inicialização do plugin. Agora o cache `'NOT_FOUND'` é limpo de imediato assim que a aplicação é iniciada.
+- **[English]** **UWP/Store App Native Icon Resolution:** Added a native Windows API fallback (`QueryFullProcessImageName` via P/Invoke) in the C# executable. Resolves access denied errors when querying path modules for UWP Store apps (like Spotify) and administrative processes.
+- **[Português]** **Resolução Nativa de Caminhos UWP/Admin:** Adicionado fallback usando API nativa do Windows (`QueryFullProcessImageName` no C#) para obter os executáveis e ícones de aplicativos UWP (Windows Store, como Spotify) e processos Administradores sem erros de privilégios.
+
+---
+
 ## [v0.3.0] - 2026-07-13
 
 ### Added / Adicionado
