@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
-const { execSync, exec } = require('child_process');
+const { execSync, exec, spawn } = require('child_process');
 const activeWin = require('active-win');
 
 // Argumentos do Stream Dock
@@ -40,25 +40,72 @@ let profiles = {};
 let iconCache = {};
 let processPathCache = {};
 
-function getPathFromProcessNameAsync(processName) {
-    return new Promise((resolve) => {
-        if (!processName) return resolve(null);
-        const key = processName.toLowerCase();
-        if (processPathCache[key] !== undefined) {
-            return resolve(processPathCache[key] === 'NOT_FOUND' ? null : processPathCache[key]);
-        }
-        exec(`"${VOL_CTRL_CMD}" path "${processName}"`, { stdio: ['ignore', 'pipe', 'ignore'] }, (err, stdout) => {
-            if (!err && stdout) {
-                let pathStr = stdout.toString().trim();
-                if (pathStr && fs.existsSync(pathStr)) {
-                    processPathCache[key] = pathStr;
-                    return resolve(pathStr);
+class VolumeControlIPC {
+    constructor(cmdPath) {
+        this.cmdPath = cmdPath;
+        this.process = null;
+        this.pendingRequests = [];
+        this.stdoutBuffer = "";
+        this.init();
+    }
+
+    init() {
+        this.process = spawn(this.cmdPath, ['server'], { stdio: ['pipe', 'pipe', 'ignore'] });
+        
+        this.process.stdout.on('data', (data) => {
+            this.stdoutBuffer += data.toString();
+            let newlineIdx;
+            while ((newlineIdx = this.stdoutBuffer.indexOf('\n')) !== -1) {
+                const line = this.stdoutBuffer.substring(0, newlineIdx).trim();
+                this.stdoutBuffer = this.stdoutBuffer.substring(newlineIdx + 1);
+                
+                if (this.pendingRequests.length > 0) {
+                    const resolve = this.pendingRequests.shift();
+                    resolve(line);
                 }
             }
-            processPathCache[key] = 'NOT_FOUND';
-            return resolve(null);
         });
-    });
+
+        this.process.on('close', (code) => {
+            this.process = null;
+            while (this.pendingRequests.length > 0) {
+                const resolve = this.pendingRequests.shift();
+                resolve("-1");
+            }
+            this.stdoutBuffer = "";
+            setTimeout(() => this.init(), 1000);
+        });
+
+        this.process.on('error', (err) => {
+            console.error("Erro no processo VolumeControlIPC:", err);
+        });
+    }
+
+    sendCmd(cmd) {
+        return new Promise((resolve) => {
+            if (!this.process) {
+                return resolve("-1");
+            }
+            this.pendingRequests.push(resolve);
+            this.process.stdin.write(cmd + '\n');
+        });
+    }
+}
+
+async function getPathFromProcessNameAsync(processName) {
+    if (!processName) return null;
+    const key = processName.toLowerCase();
+    if (processPathCache[key] !== undefined) {
+        return processPathCache[key] === 'NOT_FOUND' ? null : processPathCache[key];
+    }
+    const stdout = await ipc.sendCmd(`path ${processName}`);
+    let pathStr = stdout.trim();
+    if (pathStr && pathStr !== "-1" && fs.existsSync(pathStr)) {
+        processPathCache[key] = pathStr;
+        return pathStr;
+    }
+    processPathCache[key] = 'NOT_FOUND';
+    return null;
 }
 
 function logDebug(msg) {
@@ -78,6 +125,7 @@ const OLD_TIME_PROFILES_PATH = path.join(OLD_TIME_DATA_DIR, 'profiles.json');
 
 const LOCAL_PROFILES_PATH = path.join(__dirname, 'profiles.json');
 const VOL_CTRL_CMD = path.join(__dirname, 'VolumeControl.exe');
+const ipc = new VolumeControlIPC(VOL_CTRL_CMD);
 
 // Carregar perfis, whitelist, gamesWhitelist e blacklist de forma persistente com migração automatizada
 function loadData() {
@@ -158,21 +206,18 @@ function saveDataDebounced() {
     }, 1000);
 }
 
-function getVolumeAsync(pid) {
-    return new Promise((resolve) => {
-        if (!pid) return resolve({ volume: -1, muted: false });
-        exec(`"${VOL_CTRL_CMD}" "${pid}"`, { stdio: ['ignore', 'pipe', 'ignore'] }, (err, stdout) => {
-            if (err || !stdout) return resolve({ volume: -1, muted: false });
-            const parts = stdout.toString().trim().split('|');
-            return resolve({
-                volume: parseInt(parts[0], 10),
-                muted: parts.length > 1 ? parseInt(parts[1], 10) === 1 : false
-            });
-        });
-    });
+async function getVolumeAsync(pid) {
+    if (!pid) return { volume: -1, muted: false };
+    const stdout = await ipc.sendCmd(`${pid}`);
+    if (stdout === "-1") return { volume: -1, muted: false };
+    const parts = stdout.trim().split('|');
+    return {
+        volume: parseInt(parts[0], 10),
+        muted: parts.length > 1 ? parseInt(parts[1], 10) === 1 : false
+    };
 }
 
-function applyVolume(context) {
+async function applyVolume(context) {
     const knob = activeKnobs[context];
     if (!knob || knob.isSettingVolume || knob.pendingVolume === null || !knob.currentActiveProcess) return;
     
@@ -180,44 +225,43 @@ function applyVolume(context) {
     knob.pendingVolume = null;
     knob.isSettingVolume = true;
     
-    exec(`"${VOL_CTRL_CMD}" "${knob.currentActiveProcess.name}" ${volToSet}`, (error, stdout, stderr) => {
+    try {
+        const stdout = await ipc.sendCmd(`${knob.currentActiveProcess.name} ${volToSet}`);
         if (activeKnobs[context]) activeKnobs[context].isSettingVolume = false;
         
-        if (!error && stdout) {
-            let parts = stdout.toString().trim().split('|');
+        if (stdout && stdout !== "-1") {
+            let parts = stdout.trim().split('|');
             let finalVol = parseInt(parts[0], 10);
             if (!isNaN(finalVol) && finalVol >= 0) {
                 if (!profiles[knob.currentActiveProcess.name]) profiles[knob.currentActiveProcess.name] = {};
                 profiles[knob.currentActiveProcess.name].lastVolume = finalVol;
-                saveDataDebounced(); // Usar a gravação debouçada para performance extrema no giro
+                saveDataDebounced();
                 if (activeKnobs[context]) {
                     activeKnobs[context].currentMuted = (parts.length > 1 && parseInt(parts[1], 10) === 1);
                 }
             }
         }
-        if (activeKnobs[context] && activeKnobs[context].pendingVolume !== null) {
-            applyVolume(context);
-        }
-    });
+    } catch (e) {
+        if (activeKnobs[context]) activeKnobs[context].isSettingVolume = false;
+    }
+    
+    if (activeKnobs[context] && activeKnobs[context].pendingVolume !== null) {
+        applyVolume(context);
+    }
 }
 
-// Extrair icone assincronamente com cache
-function getIconBase64Async(exePath) {
-    return new Promise((resolve) => {
-        if (!exePath) return resolve(null);
-        if (iconCache[exePath] !== undefined) return resolve(iconCache[exePath]);
-        exec(`"${VOL_CTRL_CMD}" icon "${exePath}"`, { stdio: ['ignore', 'pipe', 'ignore'] }, (err, stdout) => {
-            if (!err && stdout) {
-                const base64Data = stdout.toString().trim();
-                if (base64Data && base64Data.startsWith("data:image/png;base64,")) {
-                    iconCache[exePath] = base64Data;
-                    return resolve(base64Data);
-                }
-            }
-            iconCache[exePath] = null; // Cache null on failure to prevent calling icon extraction repeatedly
-            return resolve(null);
-        });
-    });
+async function getIconBase64Async(exePath) {
+    if (!exePath) return null;
+    if (iconCache[exePath] !== undefined) return iconCache[exePath];
+    
+    const stdout = await ipc.sendCmd(`icon ${exePath}`);
+    const base64Data = stdout.trim();
+    if (base64Data && base64Data.startsWith("data:image/png;base64,")) {
+        iconCache[exePath] = base64Data;
+        return base64Data;
+    }
+    iconCache[exePath] = null;
+    return null;
 }
 
 function sendToSD(payload) {
@@ -563,10 +607,10 @@ function connect() {
                     }
                 }
             } else if (uiMsg.action === "getAudioProcesses") {
-                exec(`"${VOL_CTRL_CMD}" list`, { stdio: ['ignore', 'pipe', 'ignore'] }, (err, stdout) => {
+                ipc.sendCmd("list").then((stdout) => {
                     let processList = [];
-                    if (!err && stdout) {
-                        const processesRaw = stdout.toString().trim();
+                    if (stdout && stdout !== "-1") {
+                        const processesRaw = stdout.trim();
                         if (processesRaw.length > 0) processList = processesRaw.split(',').map(p => p.toLowerCase());
                     }
 
@@ -645,9 +689,9 @@ function connect() {
 
                 if (action === "mute") {
                     if (knob.currentActiveProcess) {
-                        exec(`"${VOL_CTRL_CMD}" "${knob.currentActiveProcess.name}" toggle_mute`, { stdio: ['ignore', 'pipe', 'ignore'] }, async (err, stdout) => {
-                            if (!err && stdout) {
-                                const parts = stdout.toString().trim().split('|');
+                        ipc.sendCmd(`"${knob.currentActiveProcess.name}" toggle_mute`).then(async (stdout) => {
+                            if (stdout && stdout !== "-1") {
+                                const parts = stdout.trim().split('|');
                                 if (parts.length > 1) {
                                     knob.currentMuted = (parseInt(parts[1], 10) === 1);
                                     knob.lastImage = null; // Force refresh image overlay
@@ -657,10 +701,10 @@ function connect() {
                         });
                     }
                 } else if (action === "cycle") {
-                    exec(`"${VOL_CTRL_CMD}" list`, { stdio: ['ignore', 'pipe', 'ignore'] }, async (err, stdout) => {
+                    ipc.sendCmd("list").then(async (stdout) => {
                         let processList = [];
-                        if (!err && stdout) {
-                            const processesRaw = stdout.toString().trim();
+                        if (stdout && stdout !== "-1") {
+                            const processesRaw = stdout.trim();
                             if (processesRaw.length > 0) processList = processesRaw.split(',').map(p => p.toLowerCase());
                         }
                         
@@ -709,6 +753,15 @@ setInterval(async () => {
     if (knobContexts.length === 0) return;
     
     try {
+        // Obter processos de áudio ativos do sistema para ver se algum jogo da wishlist está aberto
+        let activeAudioProcesses = [];
+        try {
+            const listStdout = await ipc.sendCmd("list");
+            if (listStdout && listStdout !== "-1" && listStdout.trim().length > 0) {
+                activeAudioProcesses = listStdout.trim().split(',').map(p => p.toLowerCase());
+            }
+        } catch(e) {}
+
         const needsFocusTracking = knobContexts.some(ctx => !activeKnobs[ctx].assignedApp);
         let focusedProcessName = null;
         let focusedPath = null;
@@ -738,7 +791,17 @@ setInterval(async () => {
                 if (knob.clickMode === "games") targetList = gamesWhitelist;
                 else if (knob.clickMode === "whitelist") targetList = whitelist;
 
-                if (knob.clickMode === "all") {
+                // DETECÇÃO INTELIGENTE DE JOGOS (v0.3.0):
+                // Se o modo for "games" ou "all", e houver algum jogo da wishlist rodando no sistema,
+                // nós o priorizamos automaticamente sobre o foco da janela ativa ou qualquer outro app!
+                let activeGameFromWhitelist = null;
+                if (knob.clickMode === "games" || knob.clickMode === "all") {
+                    activeGameFromWhitelist = activeAudioProcesses.find(p => gamesWhitelist.includes(p) && !blacklist.includes(p));
+                }
+
+                if (activeGameFromWhitelist) {
+                    targetProcessName = activeGameFromWhitelist;
+                } else if (knob.clickMode === "all") {
                     if (focusedProcessName && !blacklist.includes(focusedProcessName)) {
                         targetProcessName = focusedProcessName;
                         targetPath = focusedPath;

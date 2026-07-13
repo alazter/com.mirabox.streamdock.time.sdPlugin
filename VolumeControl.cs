@@ -86,9 +86,68 @@ public class VolumeControl
         return null;
     }
 
+    private static string[] ParseCommandLine(string line)
+    {
+        if (line.StartsWith("path ", StringComparison.OrdinalIgnoreCase))
+        {
+            return new string[] { "path", line.Substring(5).Trim() };
+        }
+        if (line.StartsWith("icon ", StringComparison.OrdinalIgnoreCase))
+        {
+            return new string[] { "icon", line.Substring(5).Trim() };
+        }
+        
+        int firstSpace = line.IndexOf(' ');
+        if (firstSpace == -1)
+        {
+            return new string[] { line.Trim() };
+        }
+        
+        string part1 = line.Substring(0, firstSpace).Trim();
+        string part2 = line.Substring(firstSpace + 1).Trim();
+        return new string[] { part1, part2 };
+    }
+
     public static void Main(string[] args)
     {
-        if (args.Length == 0) { Console.WriteLine("USAGE: VolumeControl.exe <pid_or_name|list> [new_volume_0_to_100|toggle_mute]"); return; }
+        if (args.Length == 0)
+        {
+            Console.WriteLine("USAGE: VolumeControl.exe <pid_or_name|list|server> [new_volume_0_to_100|toggle_mute]");
+            return;
+        }
+
+        string cmd = args[0].ToLower();
+        if (cmd == "server")
+        {
+            string line;
+            while ((line = Console.ReadLine()) != null)
+            {
+                line = line.Trim();
+                if (line.Equals("quit", StringComparison.OrdinalIgnoreCase) || line.Equals("exit", StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+                if (string.IsNullOrEmpty(line)) continue;
+                
+                try
+                {
+                    string[] parts = ParseCommandLine(line);
+                    ExecuteCommand(parts);
+                }
+                catch
+                {
+                    Console.WriteLine("-1");
+                }
+            }
+            return;
+        }
+
+        ExecuteCommand(args);
+    }
+
+    private static void ExecuteCommand(string[] args)
+    {
+        if (args.Length == 0) { Console.WriteLine("-1"); return; }
 
         string cmd = args[0].ToLower();
         if (cmd == "path")
@@ -307,7 +366,7 @@ public class VolumeControl
             }
             Console.WriteLine("-1");
         }
-        catch (Exception ex)
+        catch
         {
             Console.WriteLine("-1"); // Error case
         }

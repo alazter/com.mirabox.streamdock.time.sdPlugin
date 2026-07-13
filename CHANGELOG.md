@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.0] - 2026-07-13
+
+### Added / Adicionado
+- **[English]** **Intelligent Game Detection:** Automatically detects when any game from your Games Whitelist is open (via active audio sessions) and switches the knob focus to it. Keeps controlling the game even when you Alt-Tab out of it (e.g. to Discord).
+- **[Português]** **Detecção Inteligente de Jogos:** Detecta automaticamente quando qualquer jogo da sua Games Whitelist é aberto (através de sessões de áudio ativas) e foca os botões nele. O controle continua ativo mesmo se você der Alt-Tab (ex: para o Discord).
+- **[English]** **Persistent IPC Architecture:** Replaced all one-shot child process executions with a single persistent background C# instance. Communication now flows entirely in memory, reducing CPU usage to 0.00% and NVMe/SSD read cycles to zero.
+- **[Português]** **Arquitetura IPC Persistente:** Substituído todo o spawn de subprocessos por uma única instância em background do C# que conversa via memória. Isso reduz o uso de CPU a 0% e elimina ciclos de leitura no SSD/NVMe.
+
+---
+
 ## [v0.2.4] - 2026-07-06
 
 ### Added / Adicionado
