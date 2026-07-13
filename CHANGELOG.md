@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.2] - 2026-07-13
+
+### Fixed / Corrigido
+- **[English]** **Toque vs Knob Click Logic separation:** Implemented logic to differentiate screen touch (`touchTap` and `dialDown` events with `tapPos` payload) from physical knob pressing (`dialDown` without `tapPos`). This allows different actions on screen tap vs knob click.
+- **[Português]** **Separação de Toque na Tela vs Clique do Knob:** Diferenciado de forma robusta o toque na tela LCD (`touchTap` e `dialDown` com coordenadas de toque `tapPos` no payload) do clique no knob físico (`dialDown` sem `tapPos`), permitindo configurar ações independentes.
+- **[English]** **Local Debug Logging Mode:** Enabled a secure, local debug file `plugin_debug.log` written in the plugin folder to analyze hardware event patterns if needed.
+- **[Português]** **Modo de Log de Debug Local:** Habilitada a gravação de logs locais e silenciosos no arquivo `plugin_debug.log` na pasta do plugin para análise opcional de assinaturas de hardware.
+
+---
+
 ## [v0.3.1] - 2026-07-13
 
 ### Fixed / Corrigido

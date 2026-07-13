@@ -133,7 +133,9 @@ async function getPathFromProcessNameAsync(processName) {
 }
 
 function logDebug(msg) {
-    // Logging desativado conforme solicitado pelo usuário
+    try {
+        fs.appendFileSync(path.join(__dirname, 'plugin_debug.log'), msg + '\n');
+    } catch(e) {}
 }
 
 // Localizar a pasta AppData para armazenar perfis de forma segura e persistente
@@ -707,7 +709,8 @@ function connect() {
         if (event === "dialDown" || event === "touchTap" || event === "keyUp" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown") {
             const knob = activeKnobs[context];
             if (knob) {
-                let isKnobPress = (event === "dialDown" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown");
+                let isTouch = (event === "touchTap") || (msg.payload && msg.payload.tapPos !== undefined);
+                let isKnobPress = !isTouch && (event === "dialDown" || event === "encoderPress" || event === "encoderUp" || event === "encoderDown");
                 let action = isKnobPress ? knob.knobAction : knob.screenAction;
                 if (!action) action = "cycle";
 
