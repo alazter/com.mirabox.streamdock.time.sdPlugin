@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.4] - 2026-07-13
+
+### Fixed / Corrigido
+- **[English]** **Restaured Knob controller:** Reverted controller type from `Encoder` back to `Knob` in `manifest.json`. The Mirabox Stream Dock software rejects the `Encoder` value causing the plugin to disappear or not be draggable. Note: Due to Mirabox API limitations, screen touch and knob press are physically fused into the same WebSocket event (`dialDown`), making separation impossible on this hardware.
+- **[Português]** **Restauração do controlador Knob:** Revertido o tipo de controlador de `Encoder` de volta para `Knob` no `manifest.json`. O software da Mirabox rejeita o valor `Encoder`, fazendo com que o plugin sumisse ou não pudesse ser arrastado. Nota: Devido a limitações da API da Mirabox, o toque na tela e o clique no botão físico são fundidos no mesmo evento de WebSocket (`dialDown`), impossibilitando a separação física de ações neste hardware.
+
+---
+
 ## [v0.3.3] - 2026-07-13
 
 ### Changed / Alterado
